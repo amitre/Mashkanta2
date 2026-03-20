@@ -9,7 +9,10 @@
       "Read(//c/Users/AmitRe/**)",
       "Bash(cmd.exe /c \"where node 2>nul && where npm 2>nul && where npx 2>nul\")",
       "Bash(cmd.exe /c \"where git 2>nul\")",
-      "Bash(git --version)"
+      "Bash(git --version)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)"
     ]
   }
 }
