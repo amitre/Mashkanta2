@@ -402,20 +402,35 @@ export default function Home() {
               <div style={ratesInfo.live ? s.liveBadge : s.defaultBadge}>
                 {ratesInfo.live ? (
                   <>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: ratesInfo.sources?.length ? "10px" : 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "14px" }}>
                       <span style={s.liveDot} />
-                      <span>ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}</span>
+                      <span style={{ fontWeight: "700" }}>ריביות עודכנו בזמן אמת ✓</span>
+                      <span style={{ color: "#276749", fontWeight: "400" }}>&nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}</span>
                     </div>
-                    {ratesInfo.sources?.length > 0 && (
-                      <div style={s.sourcesList}>
-                        <div style={s.sourcesTitle}>מקורות:</div>
-                        {ratesInfo.sources.map((src, i) => (
-                          <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" style={s.sourceLink}>
-                            🔗 {src.title?.slice(0, 60) || src.domain}
-                          </a>
-                        ))}
+
+                    {/* טבלת ריביות לפי בנק */}
+                    <div style={s.bankRatesTable}>
+                      <div style={s.bankRatesHeader}>
+                        <span>בנק</span>
+                        <span>פריים</span>
+                        <span>קבועה צמודה</span>
+                        <span>קבועה לא צמודה</span>
+                        <span>משתנה לא צמודה</span>
                       </div>
-                    )}
+                      {ratesInfo.banks.map((bank) => (
+                        <div key={bank.name} style={s.bankRatesRow}>
+                          <span style={{ fontWeight: "600", color: "#1a202c" }}>{bank.name}</span>
+                          <span>{(bank.prime * 100).toFixed(2)}%</span>
+                          <span>{(bank.fixed_cpi * 100).toFixed(2)}%</span>
+                          <span>{(bank.fixed_unlinked * 100).toFixed(2)}%</span>
+                          <span>{(bank.variable_unlinked * 100).toFixed(2)}%</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ fontSize: "11px", color: "#276749", marginTop: "10px", opacity: 0.75 }}>
+                      * הנתונים נאספים מאתרי הבנקים הרשמיים ובנק ישראל (קו המשווה) ומייצגים ריביות ממוצעות בשוק
+                    </div>
                   </>
                 ) : (
                   <>⚠️ ריביות ברירת מחדל (לא עודכנו בזמן אמת){ratesInfo.error ? ` — ${ratesInfo.error}` : ""}</>
@@ -651,9 +666,33 @@ const s = {
     fontSize: "13px", color: "#744210", fontWeight: "600",
     marginBottom: "16px",
   },
-  sourcesList: { display: "flex", flexDirection: "column", gap: "4px", borderTop: "1px solid #9ae6b4", paddingTop: "8px" },
-  sourcesTitle: { fontSize: "11px", color: "#276749", fontWeight: "700", marginBottom: "2px" },
-  sourceLink: { fontSize: "12px", color: "#2b6cb0", textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  bankRatesTable: {
+    borderTop: "1px solid #9ae6b4",
+    paddingTop: "10px",
+    fontSize: "12px",
+    overflowX: "auto",
+  },
+  bankRatesHeader: {
+    display: "grid",
+    gridTemplateColumns: "1.8fr 0.9fr 1.2fr 1.4fr 1.4fr",
+    gap: "4px",
+    fontWeight: "700",
+    color: "#276749",
+    fontSize: "11px",
+    padding: "4px 8px",
+    backgroundColor: "#c6f6d5",
+    borderRadius: "6px",
+    marginBottom: "4px",
+  },
+  bankRatesRow: {
+    display: "grid",
+    gridTemplateColumns: "1.8fr 0.9fr 1.2fr 1.4fr 1.4fr",
+    gap: "4px",
+    padding: "5px 8px",
+    borderRadius: "6px",
+    color: "#2d3748",
+    borderBottom: "1px solid #e6fffa",
+  },
 
   liveDot: {
     display: "inline-block", width: "8px", height: "8px",
