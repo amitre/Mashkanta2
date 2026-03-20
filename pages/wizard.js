@@ -402,10 +402,9 @@ export default function Home() {
               <div style={ratesInfo.live ? s.liveBadge : s.defaultBadge}>
                 {ratesInfo.live ? (
                   <>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
                       <span style={s.liveDot} />
-                      <span style={{ fontWeight: "700" }}>ריביות עודכנו בזמן אמת ✓</span>
-                      <span style={{ color: "#276749", fontWeight: "400" }}>&nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}</span>
+                      <span style={{ fontWeight: "700", fontSize: "13px" }}>ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.date}</span>
                     </div>
 
                     {/* טבלת ריביות לפי בנק */}
@@ -413,23 +412,19 @@ export default function Home() {
                       <div style={s.bankRatesHeader}>
                         <span>בנק</span>
                         <span>פריים</span>
-                        <span>קבועה צמודה</span>
-                        <span>קבועה לא צמודה</span>
-                        <span>משתנה לא צמודה</span>
+                        <span>קב׳ צמודה</span>
+                        <span>קב׳ לא צמודה</span>
+                        <span>משתנה</span>
                       </div>
-                      {ratesInfo.banks.map((bank) => (
-                        <div key={bank.name} style={s.bankRatesRow}>
-                          <span style={{ fontWeight: "600", color: "#1a202c" }}>{bank.name}</span>
+                      {ratesInfo.banks.map((bank, i) => (
+                        <div key={bank.name} style={{ ...s.bankRatesRow, backgroundColor: i % 2 === 0 ? "#f0fff4" : "#fff" }}>
+                          <span style={{ fontWeight: "600", color: "#1a202c" }}>{bank.name.replace("בנק ", "")}</span>
                           <span>{(bank.prime * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_cpi * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_unlinked * 100).toFixed(2)}%</span>
                           <span>{(bank.variable_unlinked * 100).toFixed(2)}%</span>
                         </div>
                       ))}
-                    </div>
-
-                    <div style={{ fontSize: "11px", color: "#276749", marginTop: "10px", opacity: 0.75 }}>
-                      * הנתונים נאספים מאתרי הבנקים הרשמיים ובנק ישראל (קו המשווה) ומייצגים ריביות ממוצעות בשוק
                     </div>
                   </>
                 ) : (
@@ -668,30 +663,28 @@ const s = {
   },
   bankRatesTable: {
     borderTop: "1px solid #9ae6b4",
-    paddingTop: "10px",
-    fontSize: "12px",
-    overflowX: "auto",
+    paddingTop: "8px",
+    fontSize: "11px",
+    width: "100%",
   },
   bankRatesHeader: {
     display: "grid",
-    gridTemplateColumns: "1.8fr 0.9fr 1.2fr 1.4fr 1.4fr",
-    gap: "4px",
+    gridTemplateColumns: "1.6fr 0.8fr 1fr 1.1fr 0.9fr",
     fontWeight: "700",
     color: "#276749",
-    fontSize: "11px",
-    padding: "4px 8px",
+    fontSize: "10px",
+    padding: "5px 8px",
     backgroundColor: "#c6f6d5",
-    borderRadius: "6px",
-    marginBottom: "4px",
+    borderRadius: "6px 6px 0 0",
+    textAlign: "center",
   },
   bankRatesRow: {
     display: "grid",
-    gridTemplateColumns: "1.8fr 0.9fr 1.2fr 1.4fr 1.4fr",
-    gap: "4px",
+    gridTemplateColumns: "1.6fr 0.8fr 1fr 1.1fr 0.9fr",
     padding: "5px 8px",
-    borderRadius: "6px",
     color: "#2d3748",
-    borderBottom: "1px solid #e6fffa",
+    textAlign: "center",
+    fontSize: "11px",
   },
 
   liveDot: {
