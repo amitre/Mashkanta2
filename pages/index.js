@@ -405,7 +405,7 @@ export default function Home() {
                     <span style={s.liveDot} /> ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}
                   </>
                 ) : (
-                  <>⚠️ ריביות ברירת מחדל (לא עודכנו בזמן אמת)</>
+                  <>⚠️ ריביות ברירת מחדל (לא עודכנו בזמן אמת){ratesInfo.error ? ` — ${ratesInfo.error}` : ""}</>
                 )}
               </div>
             )}

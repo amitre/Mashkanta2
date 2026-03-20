@@ -66,23 +66,27 @@ ${BANKS.join(", ")}.
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }],
+          tools: [{ googleSearch: {} }],
           generationConfig: { temperature: 0.1 },
         }),
       }
     );
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      const errBody = await response.text();
+      throw new Error(`Gemini API ${response.status}: ${errBody.slice(0, 200)}`);
     }
 
     const data = await response.json();
     const text =
       data.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text || "";
 
-    // Extract JSON block
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in Gemini response");
+    console.log("Gemini raw response:", text.slice(0, 500));
+
+    // Strip markdown code fences if present, then extract JSON object
+    const stripped = text.replace(/```json\s*/gi, "").replace(/```/g, "");
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error(`No JSON found. Response: ${text.slice(0, 300)}`);
 
     const parsed = JSON.parse(jsonMatch[0]);
 
