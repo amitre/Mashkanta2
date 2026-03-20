@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --yes --no-typescript --no-tailwind --no-eslint --no-src-dir --no-experimental-app --import-alias \"@/*\")",
+      "Bash(npm --version)",
+      "Bash(echo \"PATH: $PATH\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/AmitRe/AppData/Roaming/**)",
+      "Read(//c/Users/AmitRe/**)",
+      "Bash(cmd.exe /c \"where node 2>nul && where npm 2>nul && where npx 2>nul\")",
+      "Bash(cmd.exe /c \"where git 2>nul\")",
+      "Bash(git --version)"
+    ]
+  }
+}
