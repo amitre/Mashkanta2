@@ -97,15 +97,15 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   // Step 1
-  const [propertyValue, setPropertyValue] = useState("");
-  const [equity, setEquity] = useState("");
-  const [apartmentStatus, setApartmentStatus] = useState("");
+  const [propertyValue, setPropertyValue] = useState("2000000");
+  const [equity, setEquity] = useState("500000");
+  const [apartmentStatus, setApartmentStatus] = useState("first");
 
   // Step 2
-  const [goals, setGoals] = useState([]);
+  const [goals, setGoals] = useState(["low_monthly"]);
 
   // Step 3
-  const [income, setIncome] = useState("");
+  const [income, setIncome] = useState("15000");
   const [borrowers, setBorrowers] = useState("1");
   const [years, setYears] = useState("25");
 
