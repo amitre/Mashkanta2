@@ -402,7 +402,20 @@ export default function Home() {
               <div style={ratesInfo.live ? s.liveBadge : s.defaultBadge}>
                 {ratesInfo.live ? (
                   <>
-                    <span style={s.liveDot} /> ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: ratesInfo.sources?.length ? "10px" : 0 }}>
+                      <span style={s.liveDot} />
+                      <span>ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}</span>
+                    </div>
+                    {ratesInfo.sources?.length > 0 && (
+                      <div style={s.sourcesList}>
+                        <div style={s.sourcesTitle}>מקורות:</div>
+                        {ratesInfo.sources.map((src, i) => (
+                          <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" style={s.sourceLink}>
+                            🔗 {src.title?.slice(0, 60) || src.domain}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>⚠️ ריביות ברירת מחדל (לא עודכנו בזמן אמת){ratesInfo.error ? ` — ${ratesInfo.error}` : ""}</>
@@ -638,6 +651,10 @@ const s = {
     fontSize: "13px", color: "#744210", fontWeight: "600",
     marginBottom: "16px",
   },
+  sourcesList: { display: "flex", flexDirection: "column", gap: "4px", borderTop: "1px solid #9ae6b4", paddingTop: "8px" },
+  sourcesTitle: { fontSize: "11px", color: "#276749", fontWeight: "700", marginBottom: "2px" },
+  sourceLink: { fontSize: "12px", color: "#2b6cb0", textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+
   liveDot: {
     display: "inline-block", width: "8px", height: "8px",
     borderRadius: "50%", backgroundColor: "#38a169",

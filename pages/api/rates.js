@@ -55,13 +55,17 @@ export default async function handler(req, res) {
     const rates = extractRatesFromText(fullText);
     const foundRates = Object.keys(rates).filter((k) => rates[k] !== DEFAULT_RATES[k]).length;
 
-    const sourceUrl = data.results?.[0]?.url || "";
-    const sourceDomain = sourceUrl.replace(/https?:\/\//, "").split("/")[0] || "Tavily Search";
+    const sources = (data.results || []).map((r) => ({
+      title: r.title || r.url,
+      url: r.url,
+      domain: r.url.replace(/https?:\/\//, "").split("/")[0],
+    }));
 
     return res.status(200).json({
       banks: buildBanksWithRates(rates),
       live: true,
-      source: `Tavily Search · ${sourceDomain}`,
+      source: "Tavily Search",
+      sources,
       date: today,
       foundRates,
     });
