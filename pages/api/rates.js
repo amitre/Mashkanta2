@@ -54,19 +54,13 @@ ${BANKS.join(", ")}.
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
-          tools: [
-            {
-              google_search_retrieval: {
-                dynamic_retrieval_config: { mode: "MODE_DYNAMIC", dynamic_threshold: 0.3 },
-              },
-            },
-          ],
+          tools: [{ google_search: {} }],
           generationConfig: { temperature: 0.1 },
         }),
       }
@@ -74,7 +68,7 @@ ${BANKS.join(", ")}.
 
     if (!response.ok) {
       const errBody = await response.text();
-      throw new Error(`[gemini-1.5-flash] ${response.status}: ${errBody.slice(0, 300)}`);
+      throw new Error(`[gemini-2.0-flash-lite] ${response.status}: ${errBody.slice(0, 300)}`);
     }
 
     const data = await response.json();
@@ -110,7 +104,7 @@ ${BANKS.join(", ")}.
     return res.status(200).json({
       banks,
       live: true,
-      source: parsed.source || "Gemini 1.5 Flash + Google Search",
+      source: parsed.source || "Gemini 2.0 Flash Lite + Google Search",
       date: parsed.date || today,
     });
   } catch (err) {
