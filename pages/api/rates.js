@@ -74,7 +74,7 @@ ${BANKS.join(", ")}.
 
     if (!response.ok) {
       const errBody = await response.text();
-      throw new Error(`Gemini 1.5 Flash ${response.status}: ${errBody.slice(0, 300)}`);
+      throw new Error(`[gemini-1.5-flash] ${response.status}: ${errBody.slice(0, 300)}`);
     }
 
     const data = await response.json();
