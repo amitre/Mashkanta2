@@ -21,66 +21,70 @@ const GOALS = [
   { id: "stability", label: "יציבות ודאות", sub: "לא אוהב הפתעות בהחזר", icon: "🛡️", color: "#805ad5", bg: "#faf5ff" },
 ];
 
-// Mortgage track definitions
-const TRACKS = {
-  prime: { name: "פריים", desc: "ריבית משתנה צמודה לריבית בנק ישראל", color: "#3182ce", risk: "בינוני" },
-  fixed_cpi: { name: "קבועה צמודה", desc: "ריבית קבועה, קרן צמודה למדד", color: "#805ad5", risk: "בינוני-נמוך" },
-  fixed_unlinked: { name: "קבועה לא צמודה", desc: "ריבית קבועה, ללא הצמדה — הוודאות הגבוהה ביותר", color: "#38a169", risk: "נמוך" },
-  variable_unlinked: { name: "משתנה לא צמודה", desc: "ריבית משתנה כל 5 שנים, ללא הצמדה", color: "#dd6b20", risk: "בינוני-גבוה" },
+const TRACK_META = {
+  prime:            { name: "פריים",             desc: "ריבית משתנה צמודה לריבית בנק ישראל",            color: "#3182ce", risk: "בינוני" },
+  fixed_cpi:        { name: "קבועה צמודה",       desc: "ריבית קבועה, קרן צמודה למדד",                  color: "#805ad5", risk: "בינוני-נמוך" },
+  fixed_unlinked:   { name: "קבועה לא צמודה",   desc: "ריבית קבועה, ללא הצמדה — הוודאות הגבוהה ביותר", color: "#38a169", risk: "נמוך" },
+  variable_unlinked:{ name: "משתנה לא צמודה",  desc: "ריבית משתנה כל 5 שנים, ללא הצמדה",             color: "#dd6b20", risk: "בינוני-גבוה" },
 };
 
-// Recommend a mix based on goals
+// Returns [{track, pct}] based on goals
 function recommendMix(goals) {
   const has = (g) => goals.includes(g);
-  if (has("stability") && !has("low_total")) {
-    return [
-      { track: "fixed_unlinked", pct: 50 },
-      { track: "fixed_cpi", pct: 33 },
-      { track: "prime", pct: 17 },
-    ];
-  }
-  if (has("low_monthly") && !has("stability")) {
-    return [
-      { track: "prime", pct: 33 },
-      { track: "variable_unlinked", pct: 33 },
-      { track: "fixed_cpi", pct: 34 },
-    ];
-  }
-  if (has("early_repay")) {
-    return [
-      { track: "prime", pct: 33 },
-      { track: "fixed_unlinked", pct: 34 },
-      { track: "fixed_cpi", pct: 33 },
-    ];
-  }
-  if (has("low_total")) {
-    return [
-      { track: "prime", pct: 33 },
-      { track: "fixed_unlinked", pct: 34 },
-      { track: "variable_unlinked", pct: 33 },
-    ];
-  }
-  // default balanced
-  return [
-    { track: "fixed_unlinked", pct: 33 },
-    { track: "fixed_cpi", pct: 34 },
-    { track: "prime", pct: 33 },
-  ];
+  if (has("stability") && !has("low_total"))
+    return [{ track: "fixed_unlinked", pct: 50 }, { track: "fixed_cpi", pct: 33 }, { track: "prime", pct: 17 }];
+  if (has("low_monthly") && !has("stability"))
+    return [{ track: "prime", pct: 33 }, { track: "variable_unlinked", pct: 33 }, { track: "fixed_cpi", pct: 34 }];
+  if (has("early_repay"))
+    return [{ track: "prime", pct: 33 }, { track: "fixed_unlinked", pct: 34 }, { track: "fixed_cpi", pct: 33 }];
+  if (has("low_total"))
+    return [{ track: "prime", pct: 33 }, { track: "fixed_unlinked", pct: 34 }, { track: "variable_unlinked", pct: 33 }];
+  return [{ track: "fixed_unlinked", pct: 33 }, { track: "fixed_cpi", pct: 34 }, { track: "prime", pct: 33 }];
 }
-
-// Simple monthly payment calc (flat rate approximation per track)
-const TRACK_RATES = {
-  prime: 0.056,
-  fixed_cpi: 0.035,
-  fixed_unlinked: 0.055,
-  variable_unlinked: 0.048,
-};
 
 function calcMonthly(principal, annualRate, years) {
   const r = annualRate / 12;
   const n = years * 12;
   if (r === 0) return principal / n;
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+}
+
+function calcTotalInterest(principal, annualRate, years) {
+  const monthly = calcMonthly(principal, annualRate, years);
+  return monthly * years * 12 - principal;
+}
+
+// Score a bank for given goals (lower is better)
+function scoreBank(bank, goals, loan, years) {
+  const mix = recommendMix(goals);
+  let totalMonthly = 0;
+  let totalInterest = 0;
+  mix.forEach(({ track, pct }) => {
+    const portion = (loan * pct) / 100;
+    const rate = bank[track] || 0.06;
+    totalMonthly += calcMonthly(portion, rate, years);
+    totalInterest += calcTotalInterest(portion, rate, years);
+  });
+
+  const w = {
+    low_monthly:  { monthly: 0.6, interest: 0.4 },
+    low_total:    { monthly: 0.2, interest: 0.8 },
+    early_repay:  { monthly: 0.4, interest: 0.6 },
+    stability:    { monthly: 0.5, interest: 0.5 },
+  };
+
+  let score = 0;
+  let weight = 0;
+  goals.forEach((g) => {
+    if (w[g]) {
+      score += w[g].monthly * totalMonthly + w[g].interest * totalInterest;
+      weight++;
+    }
+  });
+  if (weight === 0) score = totalMonthly + totalInterest * 0.1;
+  else score /= weight;
+
+  return { bank, totalMonthly, totalInterest, score };
 }
 
 function fmt(n) {
@@ -90,6 +94,7 @@ function fmt(n) {
 
 export default function Home() {
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   // Step 1
   const [propertyValue, setPropertyValue] = useState("");
@@ -103,6 +108,9 @@ export default function Home() {
   const [income, setIncome] = useState("");
   const [borrowers, setBorrowers] = useState("1");
   const [years, setYears] = useState("25");
+
+  // Rates data
+  const [ratesInfo, setRatesInfo] = useState(null); // { banks, live, source, date }
 
   const loanAmount =
     parseFloat(propertyValue) && parseFloat(equity)
@@ -127,18 +135,42 @@ export default function Home() {
     );
   }
 
-  // Results calculation
-  const mix = recommendMix(goals);
-  const totalIncome = parseFloat(income) * parseInt(borrowers || 1);
-  const yrs = parseInt(years) || 25;
+  async function fetchRatesAndProceed() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/rates");
+      const data = await res.json();
+      setRatesInfo(data);
+    } catch {
+      setRatesInfo(null);
+    } finally {
+      setLoading(false);
+      setStep(4);
+    }
+  }
+
+  // Results
   const loan = loanAmount || 0;
+  const yrs = parseInt(years) || 25;
+  const totalIncome = parseFloat(income) * parseInt(borrowers || 1);
+  const mix = recommendMix(goals);
 
+  // Top 3 banks ranked by score
+  const top3 = ratesInfo?.banks
+    ? ratesInfo.banks
+        .map((bank) => scoreBank(bank, goals, loan, yrs))
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 3)
+    : [];
+
+  // Best bank mix details
+  const bestBank = top3[0]?.bank;
   const mixDetails = mix.map(({ track, pct }) => {
+    const rate = bestBank ? (bestBank[track] || 0.06) : 0.06;
     const portion = (loan * pct) / 100;
-    const monthly = calcMonthly(portion, TRACK_RATES[track], yrs);
-    return { track, pct, portion, monthly };
+    const monthly = calcMonthly(portion, rate, yrs);
+    return { track, pct, portion, monthly, rate };
   });
-
   const totalMonthly = mixDetails.reduce((s, d) => s + d.monthly, 0);
   const paymentToIncome = totalIncome > 0 ? (totalMonthly / totalIncome) * 100 : null;
   const affordabilityOk = paymentToIncome ? paymentToIncome <= 40 : true;
@@ -149,45 +181,54 @@ export default function Home() {
         <h1 style={s.title}>מחשבון משכנתא חכם</h1>
 
         {/* Stepper */}
-        <div style={s.stepper}>
-          {[...STEPS].reverse().map((st, i, arr) => (
-            <div key={st.id} style={s.stepWrapper}>
-              <div style={s.stepItem}>
-                <div
-                  style={{
-                    ...s.stepCircle,
-                    backgroundColor:
-                      step === st.id ? "#3182ce" : step > st.id ? "#38a169" : "#e2e8f0",
-                    color: step >= st.id ? "#fff" : "#a0aec0",
-                  }}
-                >
-                  {step > st.id ? "✓" : st.id}
+        {!loading && (
+          <div style={s.stepper}>
+            {[...STEPS].reverse().map((st, i, arr) => (
+              <div key={st.id} style={s.stepWrapper}>
+                <div style={s.stepItem}>
+                  <div
+                    style={{
+                      ...s.stepCircle,
+                      backgroundColor: step === st.id ? "#3182ce" : step > st.id ? "#38a169" : "#e2e8f0",
+                      color: step >= st.id ? "#fff" : "#a0aec0",
+                    }}
+                  >
+                    {step > st.id ? "✓" : st.id}
+                  </div>
+                  <span
+                    style={{
+                      ...s.stepLabel,
+                      color: step === st.id ? "#3182ce" : step > st.id ? "#38a169" : "#a0aec0",
+                      fontWeight: step === st.id ? "700" : "400",
+                    }}
+                  >
+                    {st.label}
+                  </span>
                 </div>
-                <span
-                  style={{
-                    ...s.stepLabel,
-                    color:
-                      step === st.id ? "#3182ce" : step > st.id ? "#38a169" : "#a0aec0",
-                    fontWeight: step === st.id ? "700" : "400",
-                  }}
-                >
-                  {st.label}
-                </span>
+                {i < arr.length - 1 && (
+                  <div style={{ ...s.stepLine, backgroundColor: step > st.id ? "#38a169" : "#e2e8f0" }} />
+                )}
               </div>
-              {i < arr.length - 1 && (
-                <div
-                  style={{
-                    ...s.stepLine,
-                    backgroundColor: step > st.id ? "#38a169" : "#e2e8f0",
-                  }}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {/* Step 1 – Loan details */}
-        {step === 1 && (
+        {/* Loading screen */}
+        {loading && (
+          <div style={{ ...s.card, textAlign: "center", padding: "60px 24px" }}>
+            <div style={s.spinner} />
+            <h2 style={{ color: "#2d3748", marginTop: "24px", marginBottom: "10px" }}>מעדכן ריביות בזמן אמת</h2>
+            <p style={{ color: "#718096", fontSize: "14px", marginBottom: "6px" }}>
+              מחפש נתונים עדכניים מ-8 בנקים...
+            </p>
+            <p style={{ color: "#a0aec0", fontSize: "13px" }}>
+              פועלים · לאומי · מזרחי-טפחות · דיסקונט · יהב · אגוד · אוצר החייל · מרכנתיל
+            </p>
+          </div>
+        )}
+
+        {/* Step 1 */}
+        {!loading && step === 1 && (
           <div style={s.card}>
             <h2 style={s.cardTitle}>פרטי ההלוואה</h2>
             <p style={s.cardSub}>נחשב את גובה המשכנתא ויחס המימון בשבילך</p>
@@ -247,7 +288,7 @@ export default function Home() {
         )}
 
         {/* Step 2 – Goals */}
-        {step === 2 && (
+        {!loading && step === 2 && (
           <div style={s.card}>
             <h2 style={s.cardTitle}>מה הכי חשוב לך?</h2>
             <p style={s.cardSub}>ה-AI יבנה תמהיל שמתאים בדיוק למה שאתם מחפשים</p>
@@ -287,18 +328,13 @@ export default function Home() {
         )}
 
         {/* Step 3 – Income */}
-        {step === 3 && (
+        {!loading && step === 3 && (
           <div style={s.card}>
             <h2 style={s.cardTitle}>פרטי הכנסה</h2>
             <p style={s.cardSub}>נוודא שההחזר החודשי מתאים לכושר ההחזר שלך</p>
 
             <div style={s.fieldGroup}>
-              <Field
-                label="הכנסה חודשית נטו (₪)"
-                placeholder="לדוגמה: 15,000"
-                value={income}
-                onChange={setIncome}
-              />
+              <Field label="הכנסה חודשית נטו (₪)" placeholder="לדוגמה: 15,000" value={income} onChange={setIncome} />
               <div style={s.field}>
                 <label style={s.label}>מספר לווים</label>
                 <div style={{ display: "flex", gap: "10px", marginTop: "2px" }}>
@@ -350,7 +386,7 @@ export default function Home() {
               <button style={s.backBtn} onClick={() => setStep(2)}>→ חזרה</button>
               <button
                 style={{ ...s.nextBtn, opacity: step3Valid ? 1 : 0.4, cursor: step3Valid ? "pointer" : "not-allowed" }}
-                onClick={() => step3Valid && setStep(4)}
+                onClick={() => step3Valid && fetchRatesAndProceed()}
               >
                 חשב ←
               </button>
@@ -359,98 +395,150 @@ export default function Home() {
         )}
 
         {/* Step 4 – Results */}
-        {step === 4 && (
-          <div style={s.card}>
-            <h2 style={s.cardTitle}>התמהיל המומלץ עבורך</h2>
-            <p style={s.cardSub}>
-              על בסיס העדפותיך, הנה הצעת המסלולים המותאמת לך — לא צריך להבין פיננסים
-            </p>
-
-            {/* Summary bar */}
-            <div style={s.summaryBar}>
-              <div style={s.summaryBarFill}>
-                {mixDetails.map(({ track, pct }, i) => (
-                  <div
-                    key={track}
-                    style={{
-                      flex: pct,
-                      backgroundColor: TRACKS[track].color,
-                      height: "100%",
-                      borderRadius:
-                        i === 0 ? "6px 0 0 6px" : i === mixDetails.length - 1 ? "0 6px 6px 0" : "0",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Track cards */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", margin: "20px 0" }}>
-              {mixDetails.map(({ track, pct, portion, monthly }) => {
-                const t = TRACKS[track];
-                return (
-                  <div key={track} style={{ ...s.trackCard, borderColor: t.color }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ ...s.trackName, color: t.color }}>{t.name}</div>
-                        <div style={s.trackDesc}>{t.desc}</div>
-                      </div>
-                      <div style={{ textAlign: "left" }}>
-                        <div style={s.trackPct}>{pct}%</div>
-                        <div style={s.trackAmount}>₪{fmt(portion)}</div>
-                      </div>
-                    </div>
-                    <div style={s.trackMonthly}>
-                      החזר חודשי: <strong>₪{fmt(monthly)}</strong>
-                      <span style={{ ...s.riskBadge, backgroundColor: t.color + "22", color: t.color }}>
-                        סיכון {t.risk}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Total */}
-            <div style={s.totalBox}>
-              <div style={s.totalRow}>
-                <span>סה"כ החזר חודשי</span>
-                <span style={{ fontSize: "22px", fontWeight: "800", color: "#2b6cb0" }}>
-                  ₪{fmt(totalMonthly)}
-                </span>
-              </div>
-              {paymentToIncome !== null && (
-                <div style={s.totalRow}>
-                  <span>יחס החזר להכנסה</span>
-                  <span
-                    style={{
-                      fontWeight: "700",
-                      color: affordabilityOk ? "#38a169" : "#e53e3e",
-                    }}
-                  >
-                    {paymentToIncome.toFixed(1)}%{" "}
-                    {affordabilityOk ? "✓ תקין" : "⚠️ גבוה מהמקסימום המומלץ (40%)"}
-                  </span>
-                </div>
-              )}
-              <div style={s.totalRow}>
-                <span>תקופת הלוואה</span>
-                <span style={{ fontWeight: "600" }}>{years} שנים</span>
-              </div>
-            </div>
-
-            {!affordabilityOk && (
-              <div style={s.errorBox}>
-                ⚠️ ההחזר החודשי גבוה ביחס להכנסה. מומלץ להגדיל הון עצמי, להאריך את התקופה, או לפנות ליועץ משכנתאות.
+        {!loading && step === 4 && (
+          <div>
+            {/* Live rates badge */}
+            {ratesInfo && (
+              <div style={ratesInfo.live ? s.liveBadge : s.defaultBadge}>
+                {ratesInfo.live ? (
+                  <>
+                    <span style={s.liveDot} /> ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.source} &nbsp;·&nbsp; {ratesInfo.date}
+                  </>
+                ) : (
+                  <>⚠️ ריביות ברירת מחדל (לא עודכנו בזמן אמת)</>
+                )}
               </div>
             )}
 
-            <button style={{ ...s.backBtn, marginTop: "20px", cursor: "pointer" }} onClick={() => setStep(1)}>
+            {/* Top 3 banks */}
+            {top3.length > 0 && (
+              <div style={s.card}>
+                <h2 style={s.cardTitle}>3 הבנקים המובילים עבורך</h2>
+                <p style={s.cardSub}>מדורגים לפי ההעדפות שציינת</p>
+
+                {top3.map(({ bank, totalMonthly: m, totalInterest: ti }, idx) => (
+                  <div
+                    key={bank.name}
+                    style={{
+                      ...s.bankCard,
+                      borderColor: idx === 0 ? "#f6ad55" : "#e2e8f0",
+                      backgroundColor: idx === 0 ? "#fffbf0" : "#fff",
+                    }}
+                  >
+                    <div style={s.bankRank}>
+                      {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={s.bankName}>{bank.name}</div>
+                      <div style={s.bankRates}>
+                        פריים {(bank.prime * 100).toFixed(2)}% &nbsp;|&nbsp;
+                        קבועה לא צמודה {(bank.fixed_unlinked * 100).toFixed(2)}% &nbsp;|&nbsp;
+                        קבועה צמודה {(bank.fixed_cpi * 100).toFixed(2)}%
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={s.bankMonthly}>₪{fmt(m)}<span style={s.bankMonthlyLabel}>/חודש</span></div>
+                      <div style={s.bankInterest}>סה"כ ריבית: ₪{fmt(ti)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Mix detail for best bank */}
+            <div style={{ ...s.card, marginTop: "16px" }}>
+              <h2 style={s.cardTitle}>
+                התמהיל המומלץ{bestBank ? ` — ${bestBank.name}` : ""}
+              </h2>
+              <p style={s.cardSub}>פילוח המסלולים בהתאם לעדפות שלך</p>
+
+              <div style={s.summaryBar}>
+                <div style={s.summaryBarFill}>
+                  {mixDetails.map(({ track, pct }, i) => (
+                    <div
+                      key={track}
+                      style={{
+                        flex: pct,
+                        backgroundColor: TRACK_META[track].color,
+                        height: "100%",
+                        borderRadius: i === 0 ? "6px 0 0 6px" : i === mixDetails.length - 1 ? "0 6px 6px 0" : "0",
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", margin: "20px 0" }}>
+                {mixDetails.map(({ track, pct, portion, monthly, rate }) => {
+                  const t = TRACK_META[track];
+                  return (
+                    <div key={track} style={{ ...s.trackCard, borderColor: t.color }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ ...s.trackName, color: t.color }}>
+                            {t.name}
+                            <span style={{ ...s.riskBadge, backgroundColor: t.color + "22", color: t.color, marginRight: "8px" }}>
+                              {(rate * 100).toFixed(2)}%
+                            </span>
+                          </div>
+                          <div style={s.trackDesc}>{t.desc}</div>
+                        </div>
+                        <div style={{ textAlign: "left" }}>
+                          <div style={s.trackPct}>{pct}%</div>
+                          <div style={s.trackAmount}>₪{fmt(portion)}</div>
+                        </div>
+                      </div>
+                      <div style={s.trackMonthly}>
+                        החזר חודשי: <strong>₪{fmt(monthly)}</strong>
+                        <span style={{ ...s.riskBadge, backgroundColor: t.color + "22", color: t.color }}>
+                          סיכון {t.risk}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={s.totalBox}>
+                <div style={s.totalRow}>
+                  <span>סה"כ החזר חודשי</span>
+                  <span style={{ fontSize: "22px", fontWeight: "800", color: "#2b6cb0" }}>₪{fmt(totalMonthly)}</span>
+                </div>
+                {paymentToIncome !== null && (
+                  <div style={s.totalRow}>
+                    <span>יחס החזר להכנסה</span>
+                    <span style={{ fontWeight: "700", color: affordabilityOk ? "#38a169" : "#e53e3e" }}>
+                      {paymentToIncome.toFixed(1)}% {affordabilityOk ? "✓ תקין" : "⚠️ גבוה מ-40%"}
+                    </span>
+                  </div>
+                )}
+                <div style={s.totalRow}>
+                  <span>תקופת הלוואה</span>
+                  <span style={{ fontWeight: "600" }}>{years} שנים</span>
+                </div>
+              </div>
+
+              {!affordabilityOk && (
+                <div style={s.errorBox}>
+                  ⚠️ ההחזר החודשי גבוה ביחס להכנסה. מומלץ להגדיל הון עצמי, להאריך את התקופה, או לפנות ליועץ משכנתאות.
+                </div>
+              )}
+            </div>
+
+            <button
+              style={{ ...s.backBtn, marginTop: "16px", width: "100%", boxSizing: "border-box", cursor: "pointer" }}
+              onClick={() => { setStep(1); setRatesInfo(null); }}
+            >
               התחל מחדש
             </button>
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+      `}</style>
     </div>
   );
 }
@@ -482,7 +570,7 @@ function CalcBox({ label, value, color, note }) {
 
 const s = {
   page: { minHeight: "100vh", backgroundColor: "#edf2f7", fontFamily: "Arial, sans-serif", padding: "32px 16px" },
-  container: { maxWidth: "580px", margin: "0 auto" },
+  container: { maxWidth: "600px", margin: "0 auto" },
   title: { textAlign: "center", fontSize: "26px", color: "#1a202c", marginBottom: "28px" },
 
   stepper: { display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "28px" },
@@ -516,12 +604,12 @@ const s = {
   calcNote: { fontSize: "11px", color: "#a0aec0", marginTop: "4px" },
 
   statusGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" },
-  statusBtn: { padding: "12px", border: "2px solid", borderRadius: "10px", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" },
+  statusBtn: { padding: "12px", border: "2px solid", borderRadius: "10px", fontSize: "15px", cursor: "pointer", transition: "all 0.15s", background: "none" },
 
   errorBox: { marginTop: "16px", padding: "12px 16px", backgroundColor: "#fff5f5", border: "1px solid #fc8181", borderRadius: "8px", color: "#c53030", fontSize: "13px" },
 
   goalsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" },
-  goalCard: { padding: "18px 14px", border: "2px solid", borderRadius: "12px", cursor: "pointer", textAlign: "center", transition: "all 0.15s" },
+  goalCard: { padding: "18px 14px", border: "2px solid", borderRadius: "12px", cursor: "pointer", textAlign: "center", transition: "all 0.15s", background: "none" },
   goalIcon: { fontSize: "28px", marginBottom: "8px" },
   goalLabel: { fontSize: "15px", fontWeight: "600", marginBottom: "4px" },
   goalSub: { fontSize: "12px", color: "#718096" },
@@ -536,7 +624,41 @@ const s = {
     fontSize: "15px", fontWeight: "600", border: "2px solid #e2e8f0", borderRadius: "10px", cursor: "pointer",
   },
 
-  // Results
+  // Live badge
+  liveBadge: {
+    display: "flex", alignItems: "center", gap: "6px",
+    backgroundColor: "#f0fff4", border: "1px solid #9ae6b4",
+    borderRadius: "10px", padding: "10px 16px",
+    fontSize: "13px", color: "#276749", fontWeight: "600",
+    marginBottom: "16px",
+  },
+  defaultBadge: {
+    backgroundColor: "#fffff0", border: "1px solid #fbd38d",
+    borderRadius: "10px", padding: "10px 16px",
+    fontSize: "13px", color: "#744210", fontWeight: "600",
+    marginBottom: "16px",
+  },
+  liveDot: {
+    display: "inline-block", width: "8px", height: "8px",
+    borderRadius: "50%", backgroundColor: "#38a169",
+    animation: "pulse 1.5s infinite",
+    flexShrink: 0,
+  },
+
+  // Bank cards
+  bankCard: {
+    display: "flex", alignItems: "center", gap: "12px",
+    border: "2px solid", borderRadius: "12px", padding: "14px 16px",
+    marginBottom: "10px",
+  },
+  bankRank: { fontSize: "28px", flexShrink: 0 },
+  bankName: { fontSize: "16px", fontWeight: "700", color: "#1a202c", marginBottom: "4px" },
+  bankRates: { fontSize: "11px", color: "#718096" },
+  bankMonthly: { fontSize: "18px", fontWeight: "800", color: "#2b6cb0" },
+  bankMonthlyLabel: { fontSize: "12px", fontWeight: "400", color: "#718096" },
+  bankInterest: { fontSize: "12px", color: "#718096", marginTop: "2px", textAlign: "left" },
+
+  // Mix
   summaryBar: { height: "16px", borderRadius: "8px", overflow: "hidden", backgroundColor: "#e2e8f0", marginBottom: "4px" },
   summaryBarFill: { display: "flex", height: "100%" },
 
@@ -550,4 +672,11 @@ const s = {
 
   totalBox: { backgroundColor: "#f7fafc", borderRadius: "12px", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px" },
   totalRow: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "15px", color: "#4a5568" },
+
+  spinner: {
+    width: "52px", height: "52px", borderRadius: "50%",
+    border: "5px solid #e2e8f0", borderTopColor: "#3182ce",
+    animation: "spin 0.9s linear infinite",
+    margin: "0 auto",
+  },
 };
