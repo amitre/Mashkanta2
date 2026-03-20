@@ -33,40 +33,40 @@ export default async function handler(req, res) {
   const prompt = `אתה מומחה משכנתאות בישראל. חפש באינטרנט את ריביות המשכנתא העדכניות ביותר (${today}) עבור הבנקים הבאים:
 ${BANKS.join(", ")}.
 
-מקורות מועדפים לחיפוש: אתרי הבנקים עצמם, אתר קנטה (canta.co.il), משכנתא גורו (mashkanta.guru).
+מקורות מועדפים: אתרי הבנקים, קנטה (canta.co.il), משכנתא גורו (mashkanta.guru).
 
-עבור כל בנק, ספק את הריביות הממוצעות הטובות ביותר עבור 4 מסלולים:
-1. פריים (prime) - ריבית פריים + מרווח
+עבור כל בנק, החזר ריביות ממוצעות עבור 4 מסלולים:
+1. פריים (prime)
 2. קבועה צמודה למדד (fixed_cpi)
 3. קבועה לא צמודה (fixed_unlinked)
 4. משתנה לא צמודה כל 5 שנים (variable_unlinked)
 
-החזר JSON בדיוק בפורמט הזה (ריביות כמספר עשרוני, לדוגמה 5.6% = 0.056):
+החזר JSON בלבד (ריביות כמספר עשרוני, 5.6% = 0.056):
 {
   "banks": [
-    {
-      "name": "שם הבנק",
-      "prime": 0.056,
-      "fixed_cpi": 0.035,
-      "fixed_unlinked": 0.055,
-      "variable_unlinked": 0.048
-    }
+    { "name": "בנק הפועלים", "prime": 0.056, "fixed_cpi": 0.035, "fixed_unlinked": 0.055, "variable_unlinked": 0.048 }
   ],
-  "source": "שמות המקורות שנמצאו",
+  "source": "שם המקור",
   "date": "${today}"
 }
 
-אם לא מצאת נתונים לבנק מסוים, השתמש בערכים ממוצעים סבירים בשוק. החזר רק JSON, ללא טקסט נוסף.`;
+אם חסר בנק — השתמש בממוצע שוק. החזר JSON בלבד, ללא טקסט נוסף.`;
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
-          tools: [{ googleSearch: {} }],
+          tools: [
+            {
+              google_search_retrieval: {
+                dynamic_retrieval_config: { mode: "MODE_DYNAMIC", dynamic_threshold: 0.3 },
+              },
+            },
+          ],
           generationConfig: { temperature: 0.1 },
         }),
       }
@@ -74,16 +74,15 @@ ${BANKS.join(", ")}.
 
     if (!response.ok) {
       const errBody = await response.text();
-      throw new Error(`Gemini API ${response.status}: ${errBody.slice(0, 200)}`);
+      throw new Error(`Gemini 1.5 Flash ${response.status}: ${errBody.slice(0, 300)}`);
     }
 
     const data = await response.json();
     const text =
       data.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text || "";
 
-    console.log("Gemini raw response:", text.slice(0, 500));
+    console.log("Gemini 1.5 Flash response:", text.slice(0, 500));
 
-    // Strip markdown code fences if present, then extract JSON object
     const stripped = text.replace(/```json\s*/gi, "").replace(/```/g, "");
     const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error(`No JSON found. Response: ${text.slice(0, 300)}`);
@@ -94,7 +93,6 @@ ${BANKS.join(", ")}.
       throw new Error("Invalid banks data");
     }
 
-    // Ensure all 8 banks are present, fill missing with defaults
     const bankMap = {};
     parsed.banks.forEach((b) => { bankMap[b.name] = b; });
 
@@ -112,7 +110,7 @@ ${BANKS.join(", ")}.
     return res.status(200).json({
       banks,
       live: true,
-      source: parsed.source || "Gemini + Google Search",
+      source: parsed.source || "Gemini 1.5 Flash + Google Search",
       date: parsed.date || today,
     });
   } catch (err) {
