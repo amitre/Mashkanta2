@@ -1,3 +1,5 @@
+import { APPROVED_DOMAINS } from "../../data/bank-sources";
+
 const DEFAULT_RATES = {
   prime: 0.056,
   fixed_cpi: 0.035,
@@ -30,24 +32,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch("https://api.tavily.com/search", {
+    // חיפוש ראשון — בנק ישראל (קו המשווה) — המקור הכי אמין
+    const boiResponse = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         api_key: apiKey,
-        query: `ריביות משכנתא עדכניות ${new Date().getFullYear()} בנקים ישראל פריים קבועה לא צמודה`,
+        query: `ריביות משכנתא עדכניות לפי בנק ומסלול ${new Date().getFullYear()} פריים קבועה לא צמודה קבועה צמודה משתנה`,
         search_depth: "advanced",
         include_answer: true,
-        max_results: 5,
+        max_results: 7,
+        include_domains: APPROVED_DOMAINS,
       }),
     });
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`[Tavily] ${response.status}: ${errBody.slice(0, 300)}`);
+    if (!boiResponse.ok) {
+      const errBody = await boiResponse.text();
+      throw new Error(`[Tavily] ${boiResponse.status}: ${errBody.slice(0, 300)}`);
     }
 
-    const data = await response.json();
+    const data = await boiResponse.json();
     const answer = data.answer || "";
     const resultsText = data.results?.map((r) => r.content).join(" ") || "";
     const fullText = answer + " " + resultsText;
@@ -64,11 +68,12 @@ export default async function handler(req, res) {
     return res.status(200).json({
       banks: buildBanksWithRates(rates),
       live: true,
-      source: "Tavily Search",
+      source: "בנק ישראל + אתרי הבנקים הרשמיים",
       sources,
       date: today,
       foundRates,
     });
+
   } catch (err) {
     console.error("Rates fetch error:", err.message);
     return res.status(200).json({
@@ -85,29 +90,38 @@ function extractRatesFromText(text) {
   const rates = { ...DEFAULT_RATES };
 
   const patterns = [
-    { key: "prime",            regex: /פריי[מן][^%\d]{0,30}(\d+\.?\d*)\s*%/i },
-    { key: "prime",            regex: /(\d+\.?\d*)\s*%[^%\d]{0,30}פריי[מן]/i },
-    { key: "fixed_unlinked",   regex: /קבועה לא[- ]צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i },
-    { key: "fixed_unlinked",   regex: /(\d+\.?\d*)\s*%[^%\d]{0,30}קבועה לא[- ]צמודה/i },
-    { key: "fixed_cpi",        regex: /קבועה צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i },
-    { key: "fixed_cpi",        regex: /(\d+\.?\d*)\s*%[^%\d]{0,30}קבועה צמודה/i },
-    { key: "variable_unlinked",regex: /משתנה לא[- ]צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i },
-    { key: "variable_unlinked",regex: /(\d+\.?\d*)\s*%[^%\d]{0,30}משתנה לא[- ]צמודה/i },
+    { key: "prime",             regexes: [
+      /פריי[מן][^%\d]{0,30}(\d+\.?\d*)\s*%/i,
+      /(\d+\.?\d*)\s*%[^%\d]{0,30}פריי[מן]/i,
+    ]},
+    { key: "fixed_unlinked",   regexes: [
+      /קבועה לא[- ]צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i,
+      /(\d+\.?\d*)\s*%[^%\d]{0,30}קבועה לא[- ]צמודה/i,
+    ]},
+    { key: "fixed_cpi",        regexes: [
+      /קבועה צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i,
+      /(\d+\.?\d*)\s*%[^%\d]{0,30}קבועה צמודה/i,
+    ]},
+    { key: "variable_unlinked", regexes: [
+      /משתנה לא[- ]צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i,
+      /(\d+\.?\d*)\s*%[^%\d]{0,30}משתנה לא[- ]צמודה/i,
+    ]},
   ];
 
-  patterns.forEach(({ key, regex }) => {
-    if (rates[key] !== DEFAULT_RATES[key]) return; // already found
-    const match = text.match(regex);
-    if (match) {
-      const val = parseFloat(match[1]) / 100;
-      if (val > 0.01 && val < 0.2) rates[key] = val;
+  patterns.forEach(({ key, regexes }) => {
+    if (rates[key] !== DEFAULT_RATES[key]) return;
+    for (const regex of regexes) {
+      const match = text.match(regex);
+      if (match) {
+        const val = parseFloat(match[1]) / 100;
+        if (val > 0.01 && val < 0.2) { rates[key] = val; break; }
+      }
     }
   });
 
   return rates;
 }
 
-// Add small realistic variance per bank
 const VARIANCE = [0, 0.001, -0.001, 0.002, -0.002, 0.0015, -0.0015, 0.001];
 
 function buildBanksWithRates(base) {
