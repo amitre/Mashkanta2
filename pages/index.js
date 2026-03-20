@@ -100,11 +100,11 @@ export default function Landing() {
           {/* Photo */}
           <div style={s.photoWrap}>
             <div style={s.photoBox}>
-              <div style={{ fontSize: "80px", lineHeight: 1 }}>👩‍💼</div>
+              <img src="/oria.jpg" alt="אוריה שמוקלר" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "12px" }} />
             </div>
             <div style={s.photoLabel}>
               <div style={{ fontWeight: "700", fontSize: "14px" }}>אוריה שמוקלר</div>
-              <div style={{ fontSize: "12px", color: "#718096" }}>ייעוץ פיננסי ומשכנתאות</div>
+              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.85)" }}>ייעוץ פיננסי ומשכנתאות</div>
             </div>
           </div>
         </div>
