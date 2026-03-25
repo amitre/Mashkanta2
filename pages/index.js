@@ -112,7 +112,7 @@ export default function Landing() {
 
       {/* ── FOOTER CTA ── */}
       <div style={s.footerCta}>
-        <h2 style={s.footerTitle}>מוכן להתחיל? זה לוקח רק 3 דקות</h2>
+        <h2 style={s.footerTitle}>מוכן להתחיל?</h2>
         <p style={s.footerSub}>ענה על כמה שאלות פשוטות וקבל את הדוח המלא שלך</p>
         <button style={s.btnPrimary} onClick={() => router.push("/wizard")}>
           בדוק זכאות עכשיו ←
