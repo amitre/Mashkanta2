@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const STEPS = [
   { id: 1, label: "הלוואה" },
@@ -26,6 +26,7 @@ const TRACK_META = {
   fixed_cpi:        { name: "קבועה צמודה",       desc: "ריבית קבועה, קרן צמודה למדד",                  color: "#805ad5", risk: "בינוני-נמוך" },
   fixed_unlinked:   { name: "קבועה לא צמודה",   desc: "ריבית קבועה, ללא הצמדה — הוודאות הגבוהה ביותר", color: "#38a169", risk: "נמוך" },
   variable_unlinked:{ name: "משתנה לא צמודה",  desc: "ריבית משתנה כל 5 שנים, ללא הצמדה",             color: "#dd6b20", risk: "בינוני-גבוה" },
+  variable_cpi:     { name: "משתנה צמודה",     desc: "ריבית משתנה כל 5 שנים, קרן צמודה למדד",       color: "#e53e3e", risk: "גבוה" },
 };
 
 // Returns [{track, pct}] based on goals
@@ -34,7 +35,7 @@ function recommendMix(goals) {
   if (has("stability") && !has("low_total"))
     return [{ track: "fixed_unlinked", pct: 50 }, { track: "fixed_cpi", pct: 33 }, { track: "prime", pct: 17 }];
   if (has("low_monthly") && !has("stability"))
-    return [{ track: "prime", pct: 33 }, { track: "variable_unlinked", pct: 33 }, { track: "fixed_cpi", pct: 34 }];
+    return [{ track: "prime", pct: 34 }, { track: "variable_unlinked", pct: 33 }, { track: "variable_cpi", pct: 33 }];
   if (has("early_repay"))
     return [{ track: "prime", pct: 33 }, { track: "fixed_unlinked", pct: 34 }, { track: "fixed_cpi", pct: 33 }];
   if (has("low_total"))
@@ -72,6 +73,8 @@ function scoreBank(bank, goals, loan, years) {
     early_repay:  { monthly: 0.4, interest: 0.6 },
     stability:    { monthly: 0.5, interest: 0.5 },
   };
+  // fallback rate for variable_cpi if missing
+  if (bank.variable_cpi === undefined) bank = { ...bank, variable_cpi: 0.028 };
 
   let score = 0;
   let weight = 0;
@@ -111,6 +114,33 @@ export default function Home() {
 
   // Rates data
   const [ratesInfo, setRatesInfo] = useState(null); // { banks, live, source, date }
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("wizard_state");
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.propertyValue) setPropertyValue(d.propertyValue);
+        if (d.equity) setEquity(d.equity);
+        if (d.apartmentStatus) setApartmentStatus(d.apartmentStatus);
+        if (d.goals?.length) setGoals(d.goals);
+        if (d.income) setIncome(d.income);
+        if (d.borrowers) setBorrowers(d.borrowers);
+        if (d.years) setYears(d.years);
+        if (d.step && d.step < 4) setStep(d.step);
+      }
+    } catch {}
+  }, []);
+
+  // Save to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem("wizard_state", JSON.stringify({
+        propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step,
+      }));
+    } catch {}
+  }, [propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step]);
 
   const loanAmount =
     parseFloat(propertyValue) && parseFloat(equity)
@@ -172,7 +202,12 @@ export default function Home() {
     return { track, pct, portion, monthly, rate };
   });
   const totalMonthly = mixDetails.reduce((s, d) => s + d.monthly, 0);
-  const paymentToIncome = totalIncome > 0 ? (totalMonthly / totalIncome) * 100 : null;
+  // Estimated monthly add-ons: life insurance + property insurance
+  const monthlyInsurance = loan > 0 ? Math.round(loan * 0.00007 + 90) : 0;
+  const totalWithExtras = totalMonthly + monthlyInsurance;
+  // One-time opening fee estimate
+  const openingFee = loan > 0 ? Math.round(Math.min(Math.max(loan * 0.002, 3600), 7500)) : 0;
+  const paymentToIncome = totalIncome > 0 ? (totalWithExtras / totalIncome) * 100 : null;
   const affordabilityOk = paymentToIncome ? paymentToIncome <= 40 : true;
 
   return (
@@ -408,13 +443,15 @@ export default function Home() {
                     </div>
 
                     {/* טבלת ריביות לפי בנק */}
-                    <div style={s.bankRatesTable}>
+                    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <div style={{ ...s.bankRatesTable, minWidth: "420px" }}>
                       <div style={s.bankRatesHeader}>
                         <span>בנק</span>
                         <span>פריים</span>
                         <span>קב׳ צמודה</span>
                         <span>קב׳ לא צמודה</span>
                         <span>משתנה</span>
+                        <span>משתנה צמודה</span>
                       </div>
                       {ratesInfo.banks.map((bank, i) => (
                         <div key={bank.name} style={{ ...s.bankRatesRow, backgroundColor: i % 2 === 0 ? "#f0fff4" : "#fff" }}>
@@ -423,8 +460,10 @@ export default function Home() {
                           <span>{(bank.fixed_cpi * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_unlinked * 100).toFixed(2)}%</span>
                           <span>{(bank.variable_unlinked * 100).toFixed(2)}%</span>
+                          <span>{((bank.variable_cpi || 0.028) * 100).toFixed(2)}%</span>
                         </div>
                       ))}
+                    </div>
                     </div>
                   </>
                 ) : (
@@ -524,8 +563,20 @@ export default function Home() {
 
               <div style={s.totalBox}>
                 <div style={s.totalRow}>
-                  <span>סה"כ החזר חודשי</span>
-                  <span style={{ fontSize: "22px", fontWeight: "800", color: "#2b6cb0" }}>₪{fmt(totalMonthly)}</span>
+                  <span>החזר משכנתא חודשי</span>
+                  <span style={{ fontSize: "20px", fontWeight: "800", color: "#2b6cb0" }}>₪{fmt(totalMonthly)}</span>
+                </div>
+                <div style={{ ...s.totalRow, color: "#718096", fontSize: "13px" }}>
+                  <span>ביטוח חיים + מבנה (הערכה)</span>
+                  <span>+ ₪{fmt(monthlyInsurance)}</span>
+                </div>
+                <div style={{ ...s.totalRow, borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                  <span style={{ fontWeight: "700" }}>סה"כ עלות חודשית משוערת</span>
+                  <span style={{ fontSize: "22px", fontWeight: "800", color: "#1a202c" }}>₪{fmt(totalWithExtras)}</span>
+                </div>
+                <div style={{ ...s.totalRow, color: "#718096", fontSize: "13px" }}>
+                  <span>עמלת פתיחת תיק (חד-פעמי)</span>
+                  <span>~₪{fmt(openingFee)}</span>
                 </div>
                 {paymentToIncome !== null && (
                   <div style={s.totalRow}>
@@ -548,12 +599,21 @@ export default function Home() {
               )}
             </div>
 
-            <button
-              style={{ ...s.backBtn, marginTop: "16px", width: "100%", boxSizing: "border-box", cursor: "pointer" }}
-              onClick={() => { setStep(1); setRatesInfo(null); }}
-            >
-              התחל מחדש
-            </button>
+            <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+              <button
+                style={{ ...s.backBtn, flex: 1, boxSizing: "border-box", cursor: "pointer" }}
+                onClick={() => { setStep(1); setRatesInfo(null); try { localStorage.removeItem("wizard_state"); } catch {} }}
+              >
+                התחל מחדש
+              </button>
+              <button
+                className="no-print"
+                style={{ ...s.nextBtn, flex: 1, boxSizing: "border-box", fontSize: "14px" }}
+                onClick={() => window.print()}
+              >
+                📄 שמור כ-PDF
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -561,6 +621,11 @@ export default function Home() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+        @media print {
+          body { background: #fff !important; }
+          .no-print { display: none !important; }
+          button { display: none !important; }
+        }
       `}</style>
     </div>
   );
@@ -669,7 +734,7 @@ const s = {
   },
   bankRatesHeader: {
     display: "grid",
-    gridTemplateColumns: "1.6fr 0.8fr 1fr 1.1fr 0.9fr",
+    gridTemplateColumns: "1.4fr 0.7fr 0.9fr 1fr 0.8fr 1fr",
     fontWeight: "700",
     color: "#276749",
     fontSize: "10px",
@@ -680,7 +745,7 @@ const s = {
   },
   bankRatesRow: {
     display: "grid",
-    gridTemplateColumns: "1.6fr 0.8fr 1fr 1.1fr 0.9fr",
+    gridTemplateColumns: "1.4fr 0.7fr 0.9fr 1fr 0.8fr 1fr",
     padding: "5px 8px",
     color: "#2d3748",
     textAlign: "center",

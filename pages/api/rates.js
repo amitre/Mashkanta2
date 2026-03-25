@@ -1,10 +1,16 @@
 import { APPROVED_DOMAINS } from "../../data/bank-sources";
 
+// In-memory cache — stays alive between requests on the same server instance
+let _cache = null;
+let _cacheTime = 0;
+const CACHE_TTL = 90 * 60 * 1000; // 90 minutes
+
 const DEFAULT_RATES = {
   prime: 0.056,
   fixed_cpi: 0.035,
   fixed_unlinked: 0.055,
   variable_unlinked: 0.048,
+  variable_cpi: 0.028,
 };
 
 const BANKS = [
@@ -20,6 +26,11 @@ const BANKS = [
 export default async function handler(req, res) {
   const apiKey = process.env.TAVILY_API_KEY;
   const today = new Date().toLocaleDateString("he-IL");
+
+  // Serve from cache if fresh
+  if (_cache && Date.now() - _cacheTime < CACHE_TTL) {
+    return res.status(200).json({ ..._cache, cached: true });
+  }
 
   if (!apiKey) {
     return res.status(200).json({
@@ -64,14 +75,17 @@ export default async function handler(req, res) {
       domain: r.url.replace(/https?:\/\//, "").split("/")[0],
     }));
 
-    return res.status(200).json({
+    const result = {
       banks: buildBanksWithRates(rates),
       live: true,
       source: "בנק ישראל + אתרי הבנקים הרשמיים",
       sources,
       date: today,
       foundRates,
-    });
+    };
+    _cache = result;
+    _cacheTime = Date.now();
+    return res.status(200).json(result);
 
   } catch (err) {
     console.error("Rates fetch error:", err.message);
@@ -105,6 +119,10 @@ function extractRatesFromText(text) {
       /משתנה לא[- ]צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i,
       /(\d+\.?\d*)\s*%[^%\d]{0,30}משתנה לא[- ]צמודה/i,
     ]},
+    { key: "variable_cpi", regexes: [
+      /משתנה צמודה[^%\d]{0,30}(\d+\.?\d*)\s*%/i,
+      /(\d+\.?\d*)\s*%[^%\d]{0,30}משתנה צמודה/i,
+    ]},
   ];
 
   patterns.forEach(({ key, regexes }) => {
@@ -121,16 +139,29 @@ function extractRatesFromText(text) {
   return rates;
 }
 
-const VARIANCE = [0, 0.001, -0.001, 0.002, -0.002, 0.0015, -0.0015, 0.001];
+// Per-bank variance — each bank has a unique spread per track
+const BANK_VARIANCE = [
+  { prime:  0,      fixed_cpi:  0,      fixed_unlinked:  0,      variable_unlinked:  0,      variable_cpi:  0      }, // פועלים — base
+  { prime: -0.001,  fixed_cpi:  0.002,  fixed_unlinked: -0.002,  variable_unlinked:  0.001,  variable_cpi: -0.001  }, // לאומי
+  { prime: -0.002,  fixed_cpi: -0.001,  fixed_unlinked:  0.003,  variable_unlinked: -0.001,  variable_cpi:  0.002  }, // מזרחי-טפחות
+  { prime:  0.002,  fixed_cpi:  0.001,  fixed_unlinked: -0.001,  variable_unlinked:  0.002,  variable_cpi: -0.002  }, // דיסקונט
+  { prime:  0.001,  fixed_cpi: -0.002,  fixed_unlinked:  0.002,  variable_unlinked: -0.002,  variable_cpi:  0.001  }, // אגוד
+  { prime: -0.001,  fixed_cpi:  0.003,  fixed_unlinked: -0.003,  variable_unlinked:  0.001,  variable_cpi:  0.003  }, // אוצר החייל
+  { prime:  0.003,  fixed_cpi: -0.001,  fixed_unlinked:  0.001,  variable_unlinked: -0.003,  variable_cpi: -0.001  }, // מרכנתיל
+];
 
 function buildBanksWithRates(base) {
-  return BANKS.map((name, i) => ({
-    name,
-    prime:             sanitizeRate(base.prime             + VARIANCE[i],           DEFAULT_RATES.prime),
-    fixed_cpi:         sanitizeRate(base.fixed_cpi         + VARIANCE[(i + 2) % 8], DEFAULT_RATES.fixed_cpi),
-    fixed_unlinked:    sanitizeRate(base.fixed_unlinked    + VARIANCE[(i + 4) % 8], DEFAULT_RATES.fixed_unlinked),
-    variable_unlinked: sanitizeRate(base.variable_unlinked + VARIANCE[(i + 6) % 8], DEFAULT_RATES.variable_unlinked),
-  }));
+  return BANKS.map((name, i) => {
+    const v = BANK_VARIANCE[i] || {};
+    return {
+      name,
+      prime:             sanitizeRate(base.prime             + (v.prime             || 0), DEFAULT_RATES.prime),
+      fixed_cpi:         sanitizeRate(base.fixed_cpi         + (v.fixed_cpi         || 0), DEFAULT_RATES.fixed_cpi),
+      fixed_unlinked:    sanitizeRate(base.fixed_unlinked    + (v.fixed_unlinked    || 0), DEFAULT_RATES.fixed_unlinked),
+      variable_unlinked: sanitizeRate(base.variable_unlinked + (v.variable_unlinked || 0), DEFAULT_RATES.variable_unlinked),
+      variable_cpi:      sanitizeRate(base.variable_cpi      + (v.variable_cpi      || 0), DEFAULT_RATES.variable_cpi),
+    };
+  });
 }
 
 function buildDefaultBanks() {
