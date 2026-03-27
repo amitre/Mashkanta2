@@ -92,9 +92,11 @@ function yearsToParam(years) {
 /**
  * Extract survey date ("ינואר 2026") from the page HTML.
  * The site displays something like "סקר ינואר 2026".
+ * Decodes HTML entities first since the page uses &#NNNN; encoding.
  */
 function extractSurveyDate(html) {
-  const m = html.match(/סקר\s+([\u05D0-\u05EA]+\s+\d{4})/);
+  const decoded = decodeEntities(html);
+  const m = decoded.match(/סקר\s+([\u05D0-\u05EA]+\s+\d{4})/);
   return m ? m[1].trim() : null;
 }
 
