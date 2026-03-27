@@ -70,13 +70,6 @@ export default async function handler(req, res) {
 
     const postHtml = await postRes.text();
 
-    // 3. Find snippet around first bank name in decoded HTML
-    const decoded = decodeEntities(postHtml);
-    const bankIdx = decoded.search(/לאומי|פועלים|מזרחי/);
-    const bankSnippet = bankIdx >= 0
-      ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
-      : "bank names not found in decoded HTML";
-
     // 3. Check survey date in GET response
     const getUrl  = `https://www.supermarker.themarker.com/Mortgage/CompareMortgage.aspx?Years=3&Product=3&SUM=1000000`;
     const getRes  = await fetch(getUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
