@@ -454,12 +454,12 @@ export default function Home() {
                     <div style={{ ...s.bankRatesTable, minWidth: "420px" }}>
                       <div style={s.bankRatesHeader}>
                         <span>בנק</span>
-                        <span>פריים</span>
+                        <span>ריבית פריים</span>
                         <span>קבועה צמודה</span>
                         <span>קבועה לא צמודה</span>
                         <span>משתנה צמודה כל 5 שנים</span>
                         <span>משתנה צמודה כל שנה</span>
-                        <span>משתנה לא צמודה</span>
+                        <span>משתנה כל 5 שנים לא צמודה</span>
                       </div>
                       {ratesInfo.banks.map((bank, i) => (
                         <div key={bank.name} style={{ ...s.bankRatesRow, backgroundColor: i % 2 === 0 ? "#f0fff4" : "#fff" }}>
