@@ -77,36 +77,43 @@ export default async function handler(req, res) {
       ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
       : "bank names not found in decoded HTML";
 
-    // 4. Collect tables that seem to contain rate data
-    const tables = [];
-    const tableRe = /<table[^>]*>[\s\S]*?<\/table>/gi;
-    let tm;
-    while ((tm = tableRe.exec(postHtml)) !== null) {
-      const raw = tm[0];
-      const dec = decodeEntities(raw);
-      if (/פועלים|לאומי|מזרחי|דיסקונט/.test(dec)) {
-        // Extract rows as plain text
-        const rows = [];
-        const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-        let rm;
-        while ((rm = rowRe.exec(raw)) !== null) {
-          const cellRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
-          let cm;
-          const cells = [];
-          while ((cm = cellRe.exec(rm[1])) !== null) {
-            cells.push(decodeEntities(cm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()));
-          }
-          if (cells.length) rows.push(cells);
-        }
-        tables.push(rows);
-      }
+    // 3. Look for rate values (e.g. "3.00%", "2.88%") near bank names
+    // Find first occurrence of a percentage-like pattern in decoded HTML
+    const rateIdx = decoded.search(/\d{1,2}\.\d{2}%/);
+    const rateSnippet = rateIdx >= 0
+      ? decoded.slice(Math.max(0, rateIdx - 500), rateIdx + 1000)
+      : "no X.XX% pattern found";
+
+    // 4. Look for result divs or list items containing bank data
+    const resultDivs = [];
+    const divRe = /<(?:div|li|tr)[^>]*class=["'][^"']*result[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|li|tr)>/gi;
+    let dm;
+    while ((dm = divRe.exec(postHtml)) !== null) {
+      const text = decodeEntities(dm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+      if (text.length > 10) resultDivs.push(text.slice(0, 300));
     }
+
+    // 5. Search for JSON embedded in the page
+    const jsonMatches = [];
+    const jsonRe = /\{[^{}]{20,}"(?:rate|ריבית|interest|bank)[^{}]*\}/gi;
+    let jm;
+    while ((jm = jsonRe.exec(postHtml)) !== null && jsonMatches.length < 5) {
+      jsonMatches.push(jm[0].slice(0, 200));
+    }
+
+    // 6. 500-char snippet around first %.XX pattern in raw HTML
+    const rawRateIdx = postHtml.search(/\d{1,2}\.\d{2}%/);
+    const rawRateSnippet = rawRateIdx >= 0
+      ? postHtml.slice(Math.max(0, rawRateIdx - 300), rawRateIdx + 500)
+      : "no rate pattern in raw HTML";
 
     return res.status(200).json({
       postStatus: postRes.status,
       postHtmlLength: postHtml.length,
-      bankSnippet,
-      tables,
+      rateSnippet,
+      resultDivs,
+      jsonMatches,
+      rawRateSnippet,
     });
   } catch (err) {
     return res.status(200).json({ error: err.message });
