@@ -77,36 +77,36 @@ export default async function handler(req, res) {
       ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
       : "bank names not found in decoded HTML";
 
-    // 3. Find all div rows with class divTableRowMortgageInterestRates and extract cells
-    const divRows = [];
-    const rowRe = /<div[^>]+class="[^"]*divTableRowMortgageInterestRates[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?=<div|$)/gi;
-    let rm;
-    while ((rm = rowRe.exec(postHtml)) !== null && divRows.length < 30) {
-      const cells = [];
-      const cellRe = /<div[^>]+class="[^"]*mortgageCompareTables[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-      let cm;
-      while ((cm = cellRe.exec(rm[1])) !== null) {
-        cells.push(decodeEntities(cm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()));
-      }
-      if (cells.length) divRows.push(cells);
+    // 3. Try GET with URL params (seen in page link: ?Years=3&Product=3&SUM=...)
+    const getUrl = `${SCRAPE_URL}?Years=3&Product=3&SUM=1000000`;
+    const getRes  = await fetch(getUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
+    const getHtml = await getRes.text();
+    const getDecoded = decodeEntities(getHtml);
+
+    // 4. Search for monthly payment "6905" or "6,905" in both POST and GET responses
+    const findSnippet = (html, pattern) => {
+      const idx = html.search(pattern);
+      return idx >= 0 ? decodeEntities(html.slice(Math.max(0, idx - 300), idx + 800)) : null;
+    };
+    const postPaymentSnippet = findSnippet(postHtml, /6[,.]?905/);
+    const getPaymentSnippet  = findSnippet(getHtml,  /6[,.]?905/);
+    const getRate300Snippet  = findSnippet(getHtml,  /3\.00%/);
+
+    // 5. Search for AJAX/fetch endpoints in JS
+    const ajaxEndpoints = [];
+    const ajaxRe = /(?:fetch|url|action|ajax)\s*[:(]\s*["']([^"']*Mortgage[^"']*|[^"']*api[^"']*|[^"']*rate[^"']*|[^"']*Result[^"']*)["']/gi;
+    let am;
+    while ((am = ajaxRe.exec(postHtml)) !== null && ajaxEndpoints.length < 10) {
+      ajaxEndpoints.push(am[1]);
     }
-
-    // 4. Find 2000-char section around first row with class divTableRowMortgageInterestRates
-    const sectionIdx = postHtml.indexOf("divTableRowMortgageInterestRates");
-    const sectionSnippet = sectionIdx >= 0
-      ? decodeEntities(postHtml.slice(Math.max(0, sectionIdx - 200), sectionIdx + 3000)
-          .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
-      : "class not found";
-
-    // 5. Count total occurrences of divTableRowMortgageInterestRates
-    const rowCount = (postHtml.match(/divTableRowMortgageInterestRates/g) || []).length;
 
     return res.status(200).json({
       postStatus: postRes.status,
-      postHtmlLength: postHtml.length,
-      rowCount,
-      divRows,
-      sectionSnippet,
+      getStatus: getRes.status,
+      postPaymentSnippet,
+      getPaymentSnippet,
+      getRate300Snippet,
+      ajaxEndpoints,
     });
   } catch (err) {
     return res.status(200).json({ error: err.message });
