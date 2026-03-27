@@ -30,7 +30,7 @@ export default function Landing() {
           </button>
         </div>
 
-        <a href="/sample-report" style={s.heroLink}>⬇ להורדת דוח לדוגמא לחץ כאן</a>
+        <a href="/sample-report" style={s.heroLink}>👁 לצפייה בדוח לדוגמא לחץ כאן</a>
       </div>
 
       {/* ── WHY ── */}
