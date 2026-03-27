@@ -77,28 +77,29 @@ export default async function handler(req, res) {
       ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
       : "bank names not found in decoded HTML";
 
-    // 3. Specific test: פריים, 5 years (Years=1), 750,000₪, בנק הבינלאומי
-    const testUrl = `https://www.supermarker.themarker.com/Mortgage/CompareMortgage.aspx?Years=1&Product=5&SUM=750000`;
-    const testRes  = await fetch(testUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
-    const testHtml = await testRes.text();
+    // 3. Check survey date in GET response
+    const getUrl  = `https://www.supermarker.themarker.com/Mortgage/CompareMortgage.aspx?Years=3&Product=3&SUM=1000000`;
+    const getRes  = await fetch(getUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
+    const getHtml = await getRes.text();
+    const decoded = decodeEntities(getHtml);
 
-    // Parse mortgageHover rows
-    const testRows = [];
-    const rowRe2 = /<tr[^>]+class="[^"]*mortgageHover[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi;
-    let trm;
-    while ((trm = rowRe2.exec(testHtml)) !== null) {
-      const rowHtml = trm[1];
-      const altM  = rowHtml.match(/alt="([^"]+)"/i);
-      const rateM = rowHtml.match(/<td[^>]+ribit2Compare[^>]*>([\s\S]*?)<\/td>/i);
-      const payM  = rowHtml.match(/<td[^>]+monthlyPayment[^>]*>([\s\S]*?)<\/td>/i);
-      testRows.push({
-        bank:    altM  ? decodeEntities(altM[1])  : null,
-        rate:    rateM ? rateM[1].replace(/<[^>]+>/g,"").trim() : null,
-        monthly: payM  ? payM[1].replace(/<[^>]+>/g,"").trim()  : null,
-      });
-    }
+    // Does "סקר" appear at all?
+    const sqrIdx = decoded.indexOf("סקר");
+    const sqrSnippet = sqrIdx >= 0 ? decoded.slice(sqrIdx, sqrIdx + 80) : "NOT FOUND";
 
-    return res.status(200).json({ testUrl, testStatus: testRes.status, testRows });
+    // Raw HTML around "סקר"
+    const rawSqrIdx = getHtml.indexOf("&#1505;&#1511;&#1512;"); // סקר in entities
+    const rawSqrSnippet = rawSqrIdx >= 0
+      ? getHtml.slice(rawSqrIdx, rawSqrIdx + 120)
+      : getHtml.indexOf("סקר") >= 0
+        ? getHtml.slice(getHtml.indexOf("סקר"), getHtml.indexOf("סקר") + 80)
+        : "NOT FOUND IN RAW";
+
+    // Regex match attempt
+    const regexMatch = decoded.match(/סקר\s+([\u05D0-\u05EA]+\s+\d{4})/);
+    const surveyDateFound = regexMatch ? regexMatch[1] : null;
+
+    return res.status(200).json({ sqrSnippet, rawSqrSnippet, surveyDateFound });
     // eslint-disable-next-line no-unreachable
 
     // 3. Extract all JS string literals that look like API endpoints
