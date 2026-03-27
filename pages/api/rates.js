@@ -102,7 +102,19 @@ function extractHiddenInputs(html) {
   return fields;
 }
 
-/** Extract all <select> elements with their options */
+/** Decode numeric HTML entities (&#NNNN;) to characters */
+function decodeEntities(str) {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/gi, "&")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+/** Extract all <select> elements with their options (entity-decoded) */
 function extractSelects(html) {
   const selects = {};
   const selectRe = /<select([^>]*)>([\s\S]*?)<\/select>/gi;
@@ -116,12 +128,30 @@ function extractSelects(html) {
     let om;
     while ((om = optRe.exec(sm[2])) !== null) {
       const valM = om[1].match(/\bvalue=["']([^"']*)["']/i);
-      const text = om[2].replace(/<[^>]+>/g, "").trim();
+      const text = decodeEntities(om[2].replace(/<[^>]+>/g, "").trim());
       options.push({ value: valM ? valM[1] : text, text });
     }
     selects[name] = options;
   }
   return selects;
+}
+
+/**
+ * Find the years select — its option texts are numeric year values (5,10,15,20,25,30).
+ * Returns { name, valueForYears } where valueForYears is the option value matching the
+ * requested number of years.
+ */
+function findYearsSelect(selects, years) {
+  const YEAR_VALUES = { 5:"1", 10:"2", 15:"3", 20:"4", 25:"5", 30:"6" };
+  for (const [name, options] of Object.entries(selects)) {
+    const texts = options.map((o) => o.text.trim());
+    if (texts.includes("15") && texts.includes("25")) {
+      // This is the years select — find the value for the requested years
+      const match = options.find((o) => o.text.trim() === String(years));
+      return { name, value: match ? match.value : (YEAR_VALUES[years] ?? "5") };
+    }
+  }
+  return null;
 }
 
 /** Extract names of visible text/number inputs (excluding hidden/submit/button) */
@@ -331,28 +361,26 @@ async function scrapeThemarker(loanAmount, years) {
   const { html: pageHtml, res: pageRes } = await fetchPage(SCRAPE_URL);
   let cookies = parseCookies(pageRes);
 
-  const hiddenFields    = extractHiddenInputs(pageHtml);
-  const selects         = extractSelects(pageHtml);
-  const visibleInputs   = extractVisibleInputNames(pageHtml);
-  const submitInputs    = extractSubmitInputs(pageHtml);
+  const hiddenFields  = extractHiddenInputs(pageHtml);
+  const selects       = extractSelects(pageHtml);
+  const visibleInputs = extractVisibleInputNames(pageHtml);
 
   // 2. Find the mortgage-track select box
   const trackSelect = findTrackSelect(selects);
   if (!trackSelect) throw new Error("Track select not found on page");
 
-  // 3. Identify loan-amount and years fields heuristically
+  // 3. Find the years select (options: "5","10","15","20","25","30")
+  const yearsSelect = findYearsSelect(selects, years);
+  if (!yearsSelect) throw new Error("Years select not found on page");
+
+  // 4. Find the loan-amount input by name heuristic
   const loanField = visibleInputs.find((n) =>
     /loan|sum|amount|סכום|הלוואה/i.test(n)
   ) ?? visibleInputs[0];
+  if (!loanField)
+    throw new Error(`Loan amount field not found. Inputs: ${visibleInputs.join(", ")}`);
 
-  const yearsField = visibleInputs.find((n) =>
-    /year|period|term|שנ|תקופ/i.test(n)
-  ) ?? visibleInputs[1];
-
-  if (!loanField || !yearsField)
-    throw new Error(`Cannot identify amount/years fields. Found: ${visibleInputs.join(", ")}`);
-
-  // 4. Iterate each track option
+  // 5. Iterate each track option
   const result = {}; // bankName → { prime, fixed_cpi, … }
   let surveyDate = extractSurveyDate(pageHtml);
 
@@ -360,15 +388,11 @@ async function scrapeThemarker(loanAmount, years) {
     const trackKey = mapTextToTrack(option.text);
     if (!trackKey) continue;
 
-    // Refresh hidden fields from latest page (VIEWSTATE changes per response)
-    const currentHidden = { ...hiddenFields };
-
     const body = new URLSearchParams({
-      ...currentHidden,
-      ...submitInputs,
-      [loanField]:         String(loanAmount),
-      [yearsField]:        String(years),
-      [trackSelect.name]:  option.value,
+      ...hiddenFields,
+      [loanField]:        String(loanAmount),
+      [yearsSelect.name]: yearsSelect.value,
+      [trackSelect.name]: option.value,
     });
 
     const { html: postHtml, res: postRes } = await fetchPage(SCRAPE_URL, {
