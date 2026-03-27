@@ -77,6 +77,30 @@ export default async function handler(req, res) {
       ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
       : "bank names not found in decoded HTML";
 
+    // 3. Specific test: פריים, 5 years (Years=1), 750,000₪, בנק הבינלאומי
+    const testUrl = `https://www.supermarker.themarker.com/Mortgage/CompareMortgage.aspx?Years=1&Product=5&SUM=750000`;
+    const testRes  = await fetch(testUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
+    const testHtml = await testRes.text();
+
+    // Parse mortgageHover rows
+    const testRows = [];
+    const rowRe2 = /<tr[^>]+class="[^"]*mortgageHover[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi;
+    let trm;
+    while ((trm = rowRe2.exec(testHtml)) !== null) {
+      const rowHtml = trm[1];
+      const altM  = rowHtml.match(/alt="([^"]+)"/i);
+      const rateM = rowHtml.match(/<td[^>]+ribit2Compare[^>]*>([\s\S]*?)<\/td>/i);
+      const payM  = rowHtml.match(/<td[^>]+monthlyPayment[^>]*>([\s\S]*?)<\/td>/i);
+      testRows.push({
+        bank:    altM  ? decodeEntities(altM[1])  : null,
+        rate:    rateM ? rateM[1].replace(/<[^>]+>/g,"").trim() : null,
+        monthly: payM  ? payM[1].replace(/<[^>]+>/g,"").trim()  : null,
+      });
+    }
+
+    return res.status(200).json({ testUrl, testStatus: testRes.status, testRows });
+    // eslint-disable-next-line no-unreachable
+
     // 3. Extract all JS string literals that look like API endpoints
     const endpoints = new Set();
     const strRe = /["'`]([^"'`]*(?:\.ashx|\.asmx|\.aspx|WebService|Handler|Service|GetData|GetRate|SearchMortgage|Compare)[^"'`]*)["'`]/gi;
