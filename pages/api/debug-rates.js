@@ -77,43 +77,36 @@ export default async function handler(req, res) {
       ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
       : "bank names not found in decoded HTML";
 
-    // 3. Look for rate values (e.g. "3.00%", "2.88%") near bank names
-    // Find first occurrence of a percentage-like pattern in decoded HTML
-    const rateIdx = decoded.search(/\d{1,2}\.\d{2}%/);
-    const rateSnippet = rateIdx >= 0
-      ? decoded.slice(Math.max(0, rateIdx - 500), rateIdx + 1000)
-      : "no X.XX% pattern found";
-
-    // 4. Look for result divs or list items containing bank data
-    const resultDivs = [];
-    const divRe = /<(?:div|li|tr)[^>]*class=["'][^"']*result[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|li|tr)>/gi;
-    let dm;
-    while ((dm = divRe.exec(postHtml)) !== null) {
-      const text = decodeEntities(dm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-      if (text.length > 10) resultDivs.push(text.slice(0, 300));
+    // 3. Find all div rows with class divTableRowMortgageInterestRates and extract cells
+    const divRows = [];
+    const rowRe = /<div[^>]+class="[^"]*divTableRowMortgageInterestRates[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?=<div|$)/gi;
+    let rm;
+    while ((rm = rowRe.exec(postHtml)) !== null && divRows.length < 30) {
+      const cells = [];
+      const cellRe = /<div[^>]+class="[^"]*mortgageCompareTables[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+      let cm;
+      while ((cm = cellRe.exec(rm[1])) !== null) {
+        cells.push(decodeEntities(cm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()));
+      }
+      if (cells.length) divRows.push(cells);
     }
 
-    // 5. Search for JSON embedded in the page
-    const jsonMatches = [];
-    const jsonRe = /\{[^{}]{20,}"(?:rate|ריבית|interest|bank)[^{}]*\}/gi;
-    let jm;
-    while ((jm = jsonRe.exec(postHtml)) !== null && jsonMatches.length < 5) {
-      jsonMatches.push(jm[0].slice(0, 200));
-    }
+    // 4. Find 2000-char section around first row with class divTableRowMortgageInterestRates
+    const sectionIdx = postHtml.indexOf("divTableRowMortgageInterestRates");
+    const sectionSnippet = sectionIdx >= 0
+      ? decodeEntities(postHtml.slice(Math.max(0, sectionIdx - 200), sectionIdx + 3000)
+          .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
+      : "class not found";
 
-    // 6. 500-char snippet around first %.XX pattern in raw HTML
-    const rawRateIdx = postHtml.search(/\d{1,2}\.\d{2}%/);
-    const rawRateSnippet = rawRateIdx >= 0
-      ? postHtml.slice(Math.max(0, rawRateIdx - 300), rawRateIdx + 500)
-      : "no rate pattern in raw HTML";
+    // 5. Count total occurrences of divTableRowMortgageInterestRates
+    const rowCount = (postHtml.match(/divTableRowMortgageInterestRates/g) || []).length;
 
     return res.status(200).json({
       postStatus: postRes.status,
       postHtmlLength: postHtml.length,
-      rateSnippet,
-      resultDivs,
-      jsonMatches,
-      rawRateSnippet,
+      rowCount,
+      divRows,
+      sectionSnippet,
     });
   } catch (err) {
     return res.status(200).json({ error: err.message });
