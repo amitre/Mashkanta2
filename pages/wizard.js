@@ -439,19 +439,13 @@ export default function Home() {
               <div style={ratesInfo.live ? s.liveBadge : s.defaultBadge}>
                 {ratesInfo.live ? (
                   <>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
-                      <span style={s.liveDot} />
-                      <span style={{ fontWeight: "700", fontSize: "13px" }}>ריביות עודכנו בזמן אמת ✓ &nbsp;·&nbsp; {ratesInfo.date}</span>
-                    </div>
-
                     {/* טבלת ריביות לפי בנק */}
                     {ratesInfo.surveyDate && (
                       <div style={{ fontSize: "12px", color: "#718096", marginBottom: "6px" }}>
                         ריביות משכנתא מומלצות לפי מסלול, סכום ותקופה &nbsp;|&nbsp; סקר {ratesInfo.surveyDate}
                       </div>
                     )}
-                    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                    <div style={{ ...s.bankRatesTable, minWidth: "420px" }}>
+                    <div style={s.bankRatesTable}>
                       <div style={s.bankRatesHeader}>
                         <span>בנק</span>
                         <span>ריבית פריים</span>
@@ -472,7 +466,6 @@ export default function Home() {
                           <span>{((bank.variable_unlinked|| 0.048) * 100).toFixed(2)}%</span>
                         </div>
                       ))}
-                    </div>
                     </div>
                   </>
                 ) : (
@@ -723,7 +716,7 @@ const s = {
 
   // Live badge
   liveBadge: {
-    display: "flex", alignItems: "center", gap: "6px",
+    display: "block",
     backgroundColor: "#f0fff4", border: "1px solid #9ae6b4",
     borderRadius: "10px", padding: "10px 16px",
     fontSize: "13px", color: "#276749", fontWeight: "600",
@@ -743,22 +736,22 @@ const s = {
   },
   bankRatesHeader: {
     display: "grid",
-    gridTemplateColumns: "1.4fr 0.7fr 0.9fr 1fr 0.8fr 1fr",
+    gridTemplateColumns: "1.4fr repeat(6, 1fr)",
     fontWeight: "700",
     color: "#276749",
-    fontSize: "10px",
-    padding: "5px 8px",
+    fontSize: "9px",
+    padding: "5px 4px",
     backgroundColor: "#c6f6d5",
     borderRadius: "6px 6px 0 0",
     textAlign: "center",
   },
   bankRatesRow: {
     display: "grid",
-    gridTemplateColumns: "1.4fr 0.7fr 0.9fr 1fr 0.8fr 1fr",
-    padding: "5px 8px",
+    gridTemplateColumns: "1.4fr repeat(6, 1fr)",
+    padding: "5px 4px",
     color: "#2d3748",
     textAlign: "center",
-    fontSize: "11px",
+    fontSize: "10px",
   },
 
   liveDot: {
