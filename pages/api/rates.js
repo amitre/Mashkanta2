@@ -2,10 +2,10 @@
  * /api/rates?loan=AMOUNT&years=YEARS
  *
  * Scrapes per-track, per-bank mortgage rates from supermarker.themarker.com.
- * For each mortgage track found in the site's select box, submits the form
- * with the user's loan amount and term, then parses the results table.
+ * For each mortgage track in the site's select box, submits the form with the
+ * user's loan amount and term, then parses the results table.
  *
- * Falls back to default rates if scraping fails.
+ * Falls back to hardcoded defaults if scraping fails.
  */
 
 const SCRAPE_URL =
@@ -14,12 +14,13 @@ const SCRAPE_URL =
 const BROWSER_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8",
   "Cache-Control": "no-cache",
 };
 
-// Map text found in site's track dropdown to our internal keys
+// Map option text in track dropdown → our internal keys
 const TRACK_TEXT_MAP = [
   { key: "prime",             patterns: ["פריים"] },
   { key: "fixed_unlinked",   patterns: ["קבועה לא צמודה", 'קל"צ', "קלצ"] },
@@ -28,17 +29,17 @@ const TRACK_TEXT_MAP = [
   { key: "variable_cpi",     patterns: ["משתנה צמודה", 'מצ"מ', "מצמ"] },
 ];
 
-// Map substrings of bank names to our canonical names
+// Map substrings found in bank cells (text OR img alt) → canonical names
 const BANK_PATTERNS = [
-  { key: "בנק הפועלים",     patterns: ["הפועלים", "פועלים"] },
-  { key: "בנק לאומי",       patterns: ["לאומי"] },
-  { key: "בנק מזרחי-טפחות", patterns: ["מזרחי", "טפחות"] },
-  { key: "בנק דיסקונט",     patterns: ["דיסקונט"] },
-  { key: "בנק ירושלים",     patterns: ["ירושלים"] },
-  { key: "הבנק הבינלאומי",  patterns: ["בינלאומי"] },
-  { key: "בנק אגוד",        patterns: ["אגוד"] },
-  { key: "אוצר החייל",      patterns: ["אוצר"] },
-  { key: "בנק מרכנתיל",     patterns: ["מרכנתיל"] },
+  { key: "בנק הפועלים",      patterns: ["הפועלים", "פועלים"] },
+  { key: "בנק לאומי",        patterns: ["לאומי"] },
+  { key: "בנק מזרחי-טפחות",  patterns: ["מזרחי", "טפחות"] },
+  { key: "בנק דיסקונט",      patterns: ["דיסקונט"] },
+  { key: "בנק ירושלים",      patterns: ["ירושלים"] },
+  { key: "הבנק הבינלאומי",   patterns: ["בינלאומי"] },
+  { key: "בנק אגוד",         patterns: ["אגוד"] },
+  { key: "אוצר החייל",       patterns: ["אוצר"] },
+  { key: "בנק מרכנתיל",      patterns: ["מרכנתיל"] },
 ];
 
 const DEFAULT_RATES = {
@@ -54,15 +55,45 @@ const _cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // ---------------------------------------------------------------------------
-// HTML parsing helpers (no external dependencies)
+// HTML helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Extract text from a raw cell innerHTML:
+ * - Pulls alt="" attributes from <img> tags (bank logos store name there)
+ * - Pulls title="" attributes from any tag
+ * - Then strips all remaining HTML tags
+ */
+function cellText(innerHTML) {
+  const parts = [];
+
+  // Collect alt / title attributes before stripping tags
+  const attrRe = /\b(?:alt|title)=["']([^"']+)["']/gi;
+  let am;
+  while ((am = attrRe.exec(innerHTML)) !== null) {
+    const v = am[1].trim();
+    if (v) parts.push(v);
+  }
+
+  // Plain text after stripping tags
+  const plain = innerHTML
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (plain) parts.push(plain);
+
+  return parts.join(" ");
+}
+
+/** Extract all hidden input values from HTML */
 function extractHiddenInputs(html) {
   const fields = {};
-  const re = /<input[^>]+>/gi;
+  const re = /<input([^>]*)>/gi;
   let m;
   while ((m = re.exec(html)) !== null) {
-    const tag = m[0];
+    const tag = m[1];
     if (!/type=["']?hidden["']?/i.test(tag)) continue;
     const nameM = tag.match(/\bname=["']([^"']*)["']/i);
     const valM  = tag.match(/\bvalue=["']([^"']*)["']/i);
@@ -71,20 +102,19 @@ function extractHiddenInputs(html) {
   return fields;
 }
 
+/** Extract all <select> elements with their options */
 function extractSelects(html) {
   const selects = {};
   const selectRe = /<select([^>]*)>([\s\S]*?)<\/select>/gi;
   let sm;
   while ((sm = selectRe.exec(html)) !== null) {
-    const attrs   = sm[1];
-    const content = sm[2];
-    const nameM = attrs.match(/\bname=["']([^"']*)["']/i);
+    const nameM = sm[1].match(/\bname=["']([^"']*)["']/i);
     if (!nameM) continue;
     const name = nameM[1];
     const options = [];
     const optRe = /<option([^>]*)>([\s\S]*?)<\/option>/gi;
     let om;
-    while ((om = optRe.exec(content)) !== null) {
+    while ((om = optRe.exec(sm[2])) !== null) {
       const valM = om[1].match(/\bvalue=["']([^"']*)["']/i);
       const text = om[2].replace(/<[^>]+>/g, "").trim();
       options.push({ value: valM ? valM[1] : text, text });
@@ -94,7 +124,7 @@ function extractSelects(html) {
   return selects;
 }
 
-/** Return all visible input/select names (not hidden, not submit/button) */
+/** Extract names of visible text/number inputs (excluding hidden/submit/button) */
 function extractVisibleInputNames(html) {
   const names = [];
   const re = /<input([^>]*)>/gi;
@@ -103,13 +133,15 @@ function extractVisibleInputNames(html) {
     const tag = m[1];
     const typeM = tag.match(/\btype=["']?(\w+)["']?/i);
     const type  = typeM ? typeM[1].toLowerCase() : "text";
-    if (["hidden", "submit", "button", "image", "reset", "checkbox", "radio"].includes(type)) continue;
+    const skip  = ["hidden","submit","button","image","reset","checkbox","radio"];
+    if (skip.includes(type)) continue;
     const nameM = tag.match(/\bname=["']([^"']*)["']/i);
     if (nameM) names.push(nameM[1]);
   }
   return names;
 }
 
+/** Extract submit input name→value pairs */
 function extractSubmitInputs(html) {
   const submits = {};
   const re = /<input([^>]*)>/gi;
@@ -127,13 +159,12 @@ function extractSubmitInputs(html) {
 /** Find the select whose options contain mortgage track names */
 function findTrackSelect(selects) {
   for (const [name, options] of Object.entries(selects)) {
-    const hasTrack = options.some((opt) => mapTextToTrack(opt.text) !== null);
-    if (hasTrack) return { name, options };
+    if (options.some((opt) => mapTextToTrack(opt.text) !== null))
+      return { name, options };
   }
   return null;
 }
 
-/** Map a text string to one of our track keys */
 function mapTextToTrack(text) {
   const t = text.trim();
   for (const { key, patterns } of TRACK_TEXT_MAP) {
@@ -142,7 +173,6 @@ function mapTextToTrack(text) {
   return null;
 }
 
-/** Map a cell text to a canonical bank name */
 function mapTextToBank(text) {
   const t = text.trim();
   for (const { key, patterns } of BANK_PATTERNS) {
@@ -152,52 +182,108 @@ function mapTextToBank(text) {
 }
 
 /**
- * Given the POST response HTML and a track key, extract { bankName: rate } pairs.
- * Looks through all tables for rows that have a bank name cell and a numeric rate cell.
+ * Try to parse a percentage value from a cell string.
+ * Accepts:  "3.00%"  "3.00"  "3,00%"
+ * Rejects:  monthly payments like "6,905.82"  or "₪6905"
+ * Returns decimal (0.03) or null.
+ */
+function parseRate(cellStr) {
+  const s = cellStr.trim();
+  // Must end with % or be a short number (≤6 chars) — excludes large monthly payments
+  const hasPercent = s.endsWith("%");
+  const cleaned = s.replace("%", "").replace(",", ".").trim();
+  const v = parseFloat(cleaned);
+  if (isNaN(v) || v < 0.5 || v > 15) return null; // mortgage rates 0.5%–15%
+  if (!hasPercent && cleaned.length > 5) return null; // reject long numbers without %
+  return Math.round(v * 10000) / 10000 / 100; // e.g. 3.00 → 0.03
+}
+
+/**
+ * Parse bank→rate mapping from a results page HTML.
+ *
+ * Strategy:
+ * 1. Find all <table> blocks (scan ALL, pick the one with bank data).
+ * 2. For the winning table, detect column indices for "בנק" and "ריבית"
+ *    from the header row.
+ * 3. Extract (bankName, rate) from each data row using those column indices.
+ * 4. If column detection fails, fall back to scanning every cell in each row.
  */
 function parseRatesFromHtml(html) {
-  const bankRates = {}; // bankName -> rate (decimal)
+  const bankRates = {};
 
-  // Find all <table> blocks
-  const tableRe = /<table[^>]*>([\s\S]*?)<\/table>/gi;
-  let tm;
-  while ((tm = tableRe.exec(html)) !== null) {
-    const tableContent = tm[1];
+  // Collect all table innerHTML blocks — use a stack approach to handle nesting:
+  // we want outermost tables only.
+  const tableBlocks = [];
+  let depth = 0;
+  let start = -1;
+  const tagRe = /<\/?table[^>]*>/gi;
+  let t;
+  while ((t = tagRe.exec(html)) !== null) {
+    if (t[0].toLowerCase().startsWith("<table")) {
+      if (depth === 0) start = t.index;
+      depth++;
+    } else {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        tableBlocks.push(html.slice(start, t.index + t[0].length));
+        start = -1;
+      }
+    }
+  }
+
+  for (const tableHtml of tableBlocks) {
+    // Parse rows → cells (using cellText to preserve alt/title)
     const rows = [];
-
     const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rm;
-    while ((rm = rowRe.exec(tableContent)) !== null) {
+    while ((rm = rowRe.exec(tableHtml)) !== null) {
       const cells = [];
       const cellRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
       let cm;
       while ((cm = cellRe.exec(rm[1])) !== null) {
-        cells.push(cm[1].replace(/<[^>]+>/g, "").trim());
+        cells.push(cellText(cm[1]));
       }
       if (cells.length > 0) rows.push(cells);
     }
 
-    // Does this table contain at least one bank name?
-    const hasBankRow = rows.some((row) => row.some((cell) => mapTextToBank(cell) !== null));
-    if (!hasBankRow) continue;
+    // Does this table have at least one recognisable bank name?
+    const hasBanks = rows.some((row) =>
+      row.some((cell) => mapTextToBank(cell) !== null)
+    );
+    if (!hasBanks) continue;
 
+    // Try to identify header row → column indices
+    let bankCol  = -1;
+    let rateCol  = -1;
     for (const row of rows) {
-      let bankName = null;
-      let rate = null;
-
-      for (const cell of row) {
-        if (!bankName) bankName = mapTextToBank(cell);
-        // Look for a decimal number that looks like a percentage (0.1 – 15)
-        if (!rate) {
-          const numM = cell.match(/^(\d{1,2}(?:[.,]\d{1,4})?)%?$/);
-          if (numM) {
-            const v = parseFloat(numM[1].replace(",", "."));
-            if (v > 0.1 && v < 15) rate = v / 100;
-          }
-        }
+      for (let i = 0; i < row.length; i++) {
+        const c = row[i];
+        if (bankCol  < 0 && (c.includes("בנק") || c.includes("חברה"))) bankCol  = i;
+        if (rateCol  < 0 && c.includes("ריבית")) rateCol = i;
       }
+      if (bankCol >= 0 && rateCol >= 0) break;
+    }
 
-      if (bankName && rate) bankRates[bankName] = rate;
+    if (bankCol >= 0 && rateCol >= 0) {
+      // Column-based extraction (most reliable)
+      for (const row of rows) {
+        if (row.length <= Math.max(bankCol, rateCol)) continue;
+        const bankName = mapTextToBank(row[bankCol]);
+        if (!bankName) continue;
+        const rate = parseRate(row[rateCol]);
+        if (rate) bankRates[bankName] = rate;
+      }
+    } else {
+      // Fallback: scan each row for (bankName, rate) pair
+      for (const row of rows) {
+        let bankName = null;
+        let rate = null;
+        for (const cell of row) {
+          if (!bankName) bankName = mapTextToBank(cell);
+          if (!rate)     rate     = parseRate(cell);
+        }
+        if (bankName && rate) bankRates[bankName] = rate;
+      }
     }
 
     if (Object.keys(bankRates).length > 0) break;
@@ -210,81 +296,89 @@ function parseRatesFromHtml(html) {
 // Core scraper
 // ---------------------------------------------------------------------------
 
-async function scrapeThemarker(loanAmount, years) {
-  // 1. GET the page to obtain ASP.NET state fields and form structure
-  const pageRes = await fetch(SCRAPE_URL, {
-    headers: BROWSER_HEADERS,
+async function fetchPage(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { ...BROWSER_HEADERS, ...(options.headers || {}) },
     redirect: "follow",
+    ...options,
   });
-  if (!pageRes.ok) throw new Error(`GET failed: ${pageRes.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
+  const html = await res.text();
+  return { html, res };
+}
 
-  const pageHtml = await pageRes.text();
-
-  // Collect session cookie(s)
-  const setCookie = pageRes.headers.get("set-cookie") || "";
-  const cookies = setCookie
-    .split(/,(?=[^ ].*?=)/)
+/** Collect cookies from Set-Cookie header into a single string */
+function parseCookies(res) {
+  const raw = res.headers.get("set-cookie") || "";
+  return raw
+    .split(/,(?=\s*\w+=)/)
     .map((c) => c.split(";")[0].trim())
+    .filter(Boolean)
     .join("; ");
+}
 
-  // 2. Extract form structure
-  const hiddenFields  = extractHiddenInputs(pageHtml);
-  const selects       = extractSelects(pageHtml);
-  const visibleInputs = extractVisibleInputNames(pageHtml);
-  const submitInputs  = extractSubmitInputs(pageHtml);
+async function scrapeThemarker(loanAmount, years) {
+  // 1. Initial GET — discover form structure
+  const { html: pageHtml, res: pageRes } = await fetchPage(SCRAPE_URL);
+  let cookies = parseCookies(pageRes);
 
-  // 3. Find the track select box
+  const hiddenFields    = extractHiddenInputs(pageHtml);
+  const selects         = extractSelects(pageHtml);
+  const visibleInputs   = extractVisibleInputNames(pageHtml);
+  const submitInputs    = extractSubmitInputs(pageHtml);
+
+  // 2. Find the mortgage-track select box
   const trackSelect = findTrackSelect(selects);
-  if (!trackSelect) throw new Error("Could not find mortgage track select on page");
+  if (!trackSelect) throw new Error("Track select not found on page");
 
-  // 4. Identify loan-amount and years fields heuristically
-  const loanFieldName = visibleInputs.find((n) =>
-    /loan|sum|amount|סכום|הלוואה|mashkanta/i.test(n)
-  ) || visibleInputs[0];
+  // 3. Identify loan-amount and years fields heuristically
+  const loanField = visibleInputs.find((n) =>
+    /loan|sum|amount|סכום|הלוואה/i.test(n)
+  ) ?? visibleInputs[0];
 
-  const yearsFieldName = visibleInputs.find((n) =>
+  const yearsField = visibleInputs.find((n) =>
     /year|period|term|שנ|תקופ/i.test(n)
-  ) || visibleInputs[1];
+  ) ?? visibleInputs[1];
 
-  if (!loanFieldName || !yearsFieldName) {
-    throw new Error(`Could not identify amount/years fields. Visible inputs: ${visibleInputs.join(", ")}`);
-  }
+  if (!loanField || !yearsField)
+    throw new Error(`Cannot identify amount/years fields. Found: ${visibleInputs.join(", ")}`);
 
-  // Build the base form data (hidden ASP.NET fields + submit button)
-  const baseForm = {
-    ...hiddenFields,
-    ...submitInputs,
-  };
-
-  // 5. Iterate over every track option, submit the form, parse results
-  const result = {}; // bankName -> { prime, fixed_cpi, ... }
+  // 4. Iterate each track option
+  const result = {}; // bankName → { prime, fixed_cpi, … }
 
   for (const option of trackSelect.options) {
     const trackKey = mapTextToTrack(option.text);
-    if (!trackKey) continue; // skip options we don't recognise (e.g. "-- בחר --")
+    if (!trackKey) continue;
 
-    const formData = new URLSearchParams({
-      ...baseForm,
-      [loanFieldName]:     String(loanAmount),
-      [yearsFieldName]:    String(years),
+    // Refresh hidden fields from latest page (VIEWSTATE changes per response)
+    const currentHidden = { ...hiddenFields };
+
+    const body = new URLSearchParams({
+      ...currentHidden,
+      ...submitInputs,
+      [loanField]:         String(loanAmount),
+      [yearsField]:        String(years),
       [trackSelect.name]:  option.value,
     });
 
-    const postRes = await fetch(SCRAPE_URL, {
+    const { html: postHtml, res: postRes } = await fetchPage(SCRAPE_URL, {
       method: "POST",
       headers: {
-        ...BROWSER_HEADERS,
         "Content-Type": "application/x-www-form-urlencoded",
         Cookie: cookies,
         Referer: SCRAPE_URL,
       },
-      body: formData.toString(),
-      redirect: "follow",
+      body: body.toString(),
     });
 
-    if (!postRes.ok) continue;
+    // Update cookies for next request
+    const newCookies = parseCookies(postRes);
+    if (newCookies) cookies = newCookies;
 
-    const postHtml = await postRes.text();
+    // Update VIEWSTATE from response for subsequent POSTs
+    const freshHidden = extractHiddenInputs(postHtml);
+    Object.assign(hiddenFields, freshHidden);
+
     const bankRates = parseRatesFromHtml(postHtml);
 
     for (const [bankName, rate] of Object.entries(bankRates)) {
@@ -293,11 +387,10 @@ async function scrapeThemarker(loanAmount, years) {
     }
   }
 
-  if (Object.keys(result).length === 0) {
-    throw new Error("Scraped 0 bank rates — site structure may have changed");
-  }
+  if (Object.keys(result).length === 0)
+    throw new Error("No bank rates found — site structure may have changed");
 
-  // 6. Convert to array, fill missing tracks with defaults
+  // 5. Build final array; fill missing tracks with defaults
   return Object.entries(result).map(([name, rates]) => ({
     name,
     prime:             rates.prime             ?? DEFAULT_RATES.prime,
@@ -309,7 +402,7 @@ async function scrapeThemarker(loanAmount, years) {
 }
 
 // ---------------------------------------------------------------------------
-// Fallback: hardcoded default banks
+// Fallback — hardcoded default banks
 // ---------------------------------------------------------------------------
 
 const BANKS = [
@@ -332,6 +425,12 @@ const BANK_VARIANCE = [
   { prime:  0.003,  fixed_cpi: -0.001,  fixed_unlinked:  0.001,  variable_unlinked: -0.003,  variable_cpi: -0.001  },
 ];
 
+function sanitizeRate(val) {
+  const n = parseFloat(val);
+  if (isNaN(n) || n <= 0 || n > 0.3) return null;
+  return Math.round(n * 10000) / 10000;
+}
+
 function buildDefaultBanks() {
   return BANKS.map((name, i) => {
     const v = BANK_VARIANCE[i] || {};
@@ -346,20 +445,12 @@ function buildDefaultBanks() {
   });
 }
 
-function sanitizeRate(val) {
-  const n = parseFloat(val);
-  if (isNaN(n) || n <= 0 || n > 0.3) return null;
-  return Math.round(n * 10000) / 10000;
-}
-
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
 export default async function handler(req, res) {
   const today = new Date().toLocaleDateString("he-IL");
-
-  // loan and years come from the wizard's onboarding data
   const loan  = parseInt(req.query.loan)  || 1000000;
   const years = parseInt(req.query.years) || 25;
 
@@ -371,7 +462,6 @@ export default async function handler(req, res) {
 
   try {
     const banks = await scrapeThemarker(loan, years);
-
     const data = {
       banks,
       live: true,
@@ -380,7 +470,6 @@ export default async function handler(req, res) {
     };
     _cache.set(cacheKey, { data, time: Date.now() });
     return res.status(200).json(data);
-
   } catch (err) {
     console.error("Themarker scrape error:", err.message);
     return res.status(200).json({
