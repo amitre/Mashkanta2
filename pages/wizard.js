@@ -168,7 +168,9 @@ export default function Home() {
   async function fetchRatesAndProceed() {
     setLoading(true);
     try {
-      const res = await fetch("/api/rates");
+      const loan = loanAmount || 1000000;
+      const yrsParam = parseInt(years) || 25;
+      const res = await fetch(`/api/rates?loan=${loan}&years=${yrsParam}`);
       const data = await res.json();
       setRatesInfo(data);
     } catch {
