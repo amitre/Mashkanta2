@@ -11,10 +11,6 @@ export default function SampleReport() {
       {/* Toolbar — hidden on print */}
       <div style={s.toolbar} className="no-print">
         <button style={s.backBtn} onClick={() => router.push("/")}>→ חזרה לדף הבית</button>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <span style={s.sampleBadge}>דוח לדוגמא</span>
-          <button style={s.printBtn} onClick={() => window.print()}>📄 הורד כ-PDF</button>
-        </div>
       </div>
 
       <div style={s.container}>
