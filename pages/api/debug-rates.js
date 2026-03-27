@@ -77,36 +77,39 @@ export default async function handler(req, res) {
       ? decoded.slice(Math.max(0, bankIdx - 300), bankIdx + 1000)
       : "bank names not found in decoded HTML";
 
-    // 3. Try GET with URL params (seen in page link: ?Years=3&Product=3&SUM=...)
-    const getUrl = `${SCRAPE_URL}?Years=3&Product=3&SUM=1000000`;
-    const getRes  = await fetch(getUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
-    const getHtml = await getRes.text();
-    const getDecoded = decodeEntities(getHtml);
+    // 3. Extract all JS string literals that look like API endpoints
+    const endpoints = new Set();
+    const strRe = /["'`]([^"'`]*(?:\.ashx|\.asmx|\.aspx|WebService|Handler|Service|GetData|GetRate|SearchMortgage|Compare)[^"'`]*)["'`]/gi;
+    let sm2;
+    while ((sm2 = strRe.exec(postHtml)) !== null) endpoints.add(sm2[1]);
 
-    // 4. Search for monthly payment "6905" or "6,905" in both POST and GET responses
-    const findSnippet = (html, pattern) => {
-      const idx = html.search(pattern);
-      return idx >= 0 ? decodeEntities(html.slice(Math.max(0, idx - 300), idx + 800)) : null;
-    };
-    const postPaymentSnippet = findSnippet(postHtml, /6[,.]?905/);
-    const getPaymentSnippet  = findSnippet(getHtml,  /6[,.]?905/);
-    const getRate300Snippet  = findSnippet(getHtml,  /3\.00%/);
-
-    // 5. Search for AJAX/fetch endpoints in JS
-    const ajaxEndpoints = [];
-    const ajaxRe = /(?:fetch|url|action|ajax)\s*[:(]\s*["']([^"']*Mortgage[^"']*|[^"']*api[^"']*|[^"']*rate[^"']*|[^"']*Result[^"']*)["']/gi;
+    // 4. Extract $.ajax / $.post / $.get / fetch( patterns
+    const ajaxCalls = [];
+    const ajaxRe = /(?:\$\.ajax|\$\.post|\$\.get|fetch|axios)\s*\(\s*["'`]([^"'`]{5,100})["'`]/gi;
     let am;
-    while ((am = ajaxRe.exec(postHtml)) !== null && ajaxEndpoints.length < 10) {
-      ajaxEndpoints.push(am[1]);
+    while ((am = ajaxRe.exec(postHtml)) !== null && ajaxCalls.length < 15) {
+      ajaxCalls.push(am[1]);
+    }
+
+    // 5. Look for function calls around the search button id "calcMortgage"
+    const btnIdx = postHtml.indexOf("calcMortgage");
+    const btnSnippet = btnIdx >= 0
+      ? postHtml.slice(Math.max(0, btnIdx - 100), btnIdx + 600)
+      : "calcMortgage not found";
+
+    // 6. Look for any URL with "Result" or "Search" or "GetMortgage" in JS
+    const urlMatches = [];
+    const urlRe = /["'`](\/[^"'`\s]{3,80}(?:Result|Search|Rates|GetMortgage|Compare)[^"'`\s]*)["'`]/gi;
+    let um;
+    while ((um = urlRe.exec(postHtml)) !== null && urlMatches.length < 15) {
+      urlMatches.push(um[1]);
     }
 
     return res.status(200).json({
-      postStatus: postRes.status,
-      getStatus: getRes.status,
-      postPaymentSnippet,
-      getPaymentSnippet,
-      getRate300Snippet,
-      ajaxEndpoints,
+      endpoints: [...endpoints],
+      ajaxCalls,
+      urlMatches,
+      btnSnippet,
     });
   } catch (err) {
     return res.status(200).json({ error: err.message });
