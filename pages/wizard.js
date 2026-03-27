@@ -445,6 +445,11 @@ export default function Home() {
                     </div>
 
                     {/* טבלת ריביות לפי בנק */}
+                    {ratesInfo.surveyDate && (
+                      <div style={{ fontSize: "12px", color: "#718096", marginBottom: "6px" }}>
+                        ריביות משכנתא מומלצות לפי מסלול, סכום ותקופה &nbsp;|&nbsp; סקר {ratesInfo.surveyDate}
+                      </div>
+                    )}
                     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                     <div style={{ ...s.bankRatesTable, minWidth: "420px" }}>
                       <div style={s.bankRatesHeader}>

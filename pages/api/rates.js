@@ -307,6 +307,15 @@ async function fetchPage(url, options = {}) {
   return { html, res };
 }
 
+/**
+ * Extract the survey date string from the page, e.g. "ינואר 2026".
+ * The site displays something like: "סקר ינואר 2026"
+ */
+function extractSurveyDate(html) {
+  const m = html.match(/סקר\s+([\u05D0-\u05EA]+\s+\d{4})/);
+  return m ? m[1].trim() : null;
+}
+
 /** Collect cookies from Set-Cookie header into a single string */
 function parseCookies(res) {
   const raw = res.headers.get("set-cookie") || "";
@@ -345,6 +354,7 @@ async function scrapeThemarker(loanAmount, years) {
 
   // 4. Iterate each track option
   const result = {}; // bankName → { prime, fixed_cpi, … }
+  let surveyDate = extractSurveyDate(pageHtml);
 
   for (const option of trackSelect.options) {
     const trackKey = mapTextToTrack(option.text);
@@ -379,6 +389,9 @@ async function scrapeThemarker(loanAmount, years) {
     const freshHidden = extractHiddenInputs(postHtml);
     Object.assign(hiddenFields, freshHidden);
 
+    // Try to extract survey date from results page if not yet found
+    if (!surveyDate) surveyDate = extractSurveyDate(postHtml);
+
     const bankRates = parseRatesFromHtml(postHtml);
 
     for (const [bankName, rate] of Object.entries(bankRates)) {
@@ -391,7 +404,7 @@ async function scrapeThemarker(loanAmount, years) {
     throw new Error("No bank rates found — site structure may have changed");
 
   // 5. Build final array; fill missing tracks with defaults
-  return Object.entries(result).map(([name, rates]) => ({
+  const banks = Object.entries(result).map(([name, rates]) => ({
     name,
     prime:             rates.prime             ?? DEFAULT_RATES.prime,
     fixed_cpi:         rates.fixed_cpi         ?? DEFAULT_RATES.fixed_cpi,
@@ -399,6 +412,8 @@ async function scrapeThemarker(loanAmount, years) {
     variable_unlinked: rates.variable_unlinked  ?? DEFAULT_RATES.variable_unlinked,
     variable_cpi:      rates.variable_cpi       ?? DEFAULT_RATES.variable_cpi,
   }));
+
+  return { banks, surveyDate };
 }
 
 // ---------------------------------------------------------------------------
@@ -461,12 +476,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const banks = await scrapeThemarker(loan, years);
+    const { banks, surveyDate } = await scrapeThemarker(loan, years);
     const data = {
       banks,
       live: true,
       source: "supermarker.themarker.com",
       date: today,
+      surveyDate: surveyDate || null,
     };
     _cache.set(cacheKey, { data, time: Date.now() });
     return res.status(200).json(data);
