@@ -33,11 +33,11 @@ const YEARS_MAP = { 5: 1, 10: 2, 15: 3, 20: 4, 25: 5, 30: 6 };
 // Map substrings in img alt text → canonical bank names
 const BANK_PATTERNS = [
   { key: "בנק הפועלים",      patterns: ["הפועלים"] },
+  { key: "הבנק הבינלאומי",   patterns: ["בינלאומי"] }, // must come before לאומי — "בינלאומי" contains "לאומי"
   { key: "בנק לאומי",        patterns: ["לאומי"] },
   { key: "בנק מזרחי-טפחות",  patterns: ["מזרחי", "טפחות"] },
   { key: "בנק דיסקונט",      patterns: ["דיסקונט"] },
   { key: "בנק ירושלים",      patterns: ["ירושלים"] },
-  { key: "הבנק הבינלאומי",   patterns: ["בינלאומי"] },
   { key: "בנק אגוד",         patterns: ["אגוד"] },
   { key: "אוצר החייל",       patterns: ["אוצר"] },
   { key: "בנק מרכנתיל",      patterns: ["מרכנתיל"] },
