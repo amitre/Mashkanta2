@@ -455,10 +455,11 @@ export default function Home() {
                       <div style={s.bankRatesHeader}>
                         <span>בנק</span>
                         <span>פריים</span>
-                        <span>קב׳ צמודה</span>
-                        <span>קב׳ לא צמודה</span>
-                        <span>משתנה</span>
-                        <span>משתנה צמודה</span>
+                        <span>קבועה צמודה</span>
+                        <span>קבועה לא צמודה</span>
+                        <span>משתנה צמודה כל 5 שנים</span>
+                        <span>משתנה צמודה כל שנה</span>
+                        <span>משתנה לא צמודה</span>
                       </div>
                       {ratesInfo.banks.map((bank, i) => (
                         <div key={bank.name} style={{ ...s.bankRatesRow, backgroundColor: i % 2 === 0 ? "#f0fff4" : "#fff" }}>
@@ -466,8 +467,9 @@ export default function Home() {
                           <span>{(bank.prime * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_cpi * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_unlinked * 100).toFixed(2)}%</span>
-                          <span>{(bank.variable_unlinked * 100).toFixed(2)}%</span>
-                          <span>{((bank.variable_cpi || 0.028) * 100).toFixed(2)}%</span>
+                          <span>{((bank.variable_cpi     || 0.028) * 100).toFixed(2)}%</span>
+                          <span>{((bank.variable_cpi_1yr || 0.026) * 100).toFixed(2)}%</span>
+                          <span>{((bank.variable_unlinked|| 0.048) * 100).toFixed(2)}%</span>
                         </div>
                       ))}
                     </div>

@@ -20,11 +20,12 @@ const BROWSER_HEADERS = {
 
 // Map our track keys → site's Product URL param value
 const TRACKS = [
-  { key: "prime",             product: 5 },
-  { key: "fixed_cpi",        product: 3 },
-  { key: "fixed_unlinked",   product: 4 },
-  { key: "variable_unlinked",product: 69 },
-  { key: "variable_cpi",     product: 6 },
+  { key: "prime",              product: 5  },
+  { key: "fixed_cpi",         product: 3  },
+  { key: "fixed_unlinked",    product: 4  },
+  { key: "variable_cpi",      product: 6  }, // משתנה צמודה כל 5 שנים
+  { key: "variable_cpi_1yr",  product: 7  }, // משתנה צמודה כל שנה
+  { key: "variable_unlinked", product: 69 }, // משתנה לא צמודה כל 5 שנים
 ];
 
 // Map years → site's Years URL param value (select option value)
@@ -48,8 +49,9 @@ const DEFAULT_RATES = {
   prime: 0.056,
   fixed_cpi: 0.035,
   fixed_unlinked: 0.055,
-  variable_unlinked: 0.048,
   variable_cpi: 0.028,
+  variable_cpi_1yr: 0.026,
+  variable_unlinked: 0.048,
 };
 
 // In-memory cache keyed by "loan_years"
@@ -167,8 +169,9 @@ async function scrapeThemarker(loanAmount, years) {
     prime:             rates.prime             ?? DEFAULT_RATES.prime,
     fixed_cpi:         rates.fixed_cpi         ?? DEFAULT_RATES.fixed_cpi,
     fixed_unlinked:    rates.fixed_unlinked     ?? DEFAULT_RATES.fixed_unlinked,
-    variable_unlinked: rates.variable_unlinked  ?? DEFAULT_RATES.variable_unlinked,
     variable_cpi:      rates.variable_cpi       ?? DEFAULT_RATES.variable_cpi,
+    variable_cpi_1yr:  rates.variable_cpi_1yr   ?? DEFAULT_RATES.variable_cpi_1yr,
+    variable_unlinked: rates.variable_unlinked  ?? DEFAULT_RATES.variable_unlinked,
   }));
 
   return { banks, surveyDate };
