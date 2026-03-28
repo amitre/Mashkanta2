@@ -1,0 +1,39 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Every Tuesday at 07:00 UTC (day after rates update)
+    - cron: "0 7 * * 2"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --json --outputFile=test-results.json
+        continue-on-error: true
+
+      - name: Report failures to GitHub Issues
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/report-test-failures.js
