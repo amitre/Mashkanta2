@@ -213,46 +213,56 @@ async function fetchBoiRate() {
     }
   }
 
-  // Method 2: Scrape boi.org.il homepage
-  try {
-    dbg("Fetching boi.org.il homepage…");
-    const res = await fetch("https://www.boi.org.il/", {
-      headers: BROWSER_HEADERS, redirect: "follow",
-    });
-    dbg(`HTTP ${res.status}`);
-    if (res.ok) {
+  // Method 2: monetary policy decisions page (server-side rendered)
+  const pageCandidates = [
+    "https://www.boi.org.il/he/monetarypolicy/monetarypolicydecisions/Pages/Default.aspx",
+    "https://www.boi.org.il/en/monetary-policy/monetary-policy-interest-rate/",
+    "https://www.boi.org.il/he/",
+    "https://www.boi.org.il/",
+  ];
+  for (const pageUrl of pageCandidates) {
+    try {
+      dbg(`Page: ${pageUrl}`);
+      const res = await fetch(pageUrl, { headers: BROWSER_HEADERS, redirect: "follow" });
+      dbg(`HTTP ${res.status}`);
+      if (!res.ok) continue;
       const html = await res.text();
       const decoded = decodeEntities(html);
-      // Record all % values with context for diagnosis
-      const pctCtx = [...decoded.matchAll(/\d+(?:[.,]\d+)?\s*%/g)]
-        .slice(0, 15)
-        .map(m => `${m[0]}@${m.index}: ${decoded.slice(Math.max(0, m.index - 80), m.index + 80).replace(/\s+/g, " ")}`);
-      dbg(`% occurrences: ${JSON.stringify(pctCtx)}`);
 
-      const patterns = [
-        /(\d+(?:[.,]\d+)?)\s*%[^<]{0,300}ריבית\s*בנק\s*ישראל/,
-        /ריבית\s*בנק\s*ישראל[^<]{0,100}(\d+(?:[.,]\d+)?)\s*%/,
-        /<[^>]*>(\d+(?:[.,]\d+)?)\s*%\s*<\/[^>]*>[^<]{0,50}ריבית/,
-      ];
-      for (const re of patterns) {
-        const m = decoded.match(re);
-        if (m) {
-          const raw = (m[1] || m[2] || "").replace(",", ".");
-          const rate = parseFloat(raw) / 100;
-          if (!isNaN(rate) && rate > 0 && rate < 0.5) {
-            const d = new Date();
-            const dateStr = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
-            dbg(`FOUND via homepage: ${(rate * 100).toFixed(2)}%`);
-            fs.writeFileSync(path.join(__dirname, "../data/boi-debug.json"),
-              JSON.stringify({ debugLines, source: "homepage" }, null, 2));
-            return { rate, date: dateStr };
-          }
+      // Look for standalone rate value near ריבית — exclude URL-encoded matches
+      // A real percentage looks like "4%" or "4.5%" as standalone text, NOT inside a URL
+      const textBlocks = decoded
+        .replace(/https?:\/\/[^\s"<>]*/g, " ")    // strip URLs first
+        .replace(/<[^>]+>/g, " ");                 // strip tags
+
+      dbg(`text length: ${textBlocks.length}`);
+
+      // Log all % occurrences in cleaned text
+      const pctHits = [...textBlocks.matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)]
+        .filter(m => parseFloat(m[1]) < 100 && parseFloat(m[1]) > 0)
+        .slice(0, 20)
+        .map(m => `${m[0]}@${m.index}: "${textBlocks.slice(Math.max(0, m.index - 60), m.index + 60).replace(/\s+/g, " ")}"`);
+      dbg(`% in text: ${JSON.stringify(pctHits)}`);
+
+      // Find a reasonable rate (1–15%) near "ריבית" within 300 chars
+      const rateRe = /ריבית[^%]{0,300}?(\d+(?:[.,]\d+)?)\s*%|(\d+(?:[.,]\d+)?)\s*%[^%]{0,300}?ריבית/g;
+      let m;
+      while ((m = rateRe.exec(textBlocks)) !== null) {
+        const raw = ((m[1] || m[2]) ?? "").replace(",", ".");
+        const rate = parseFloat(raw) / 100;
+        if (!isNaN(rate) && rate >= 0.01 && rate <= 0.15) {
+          const d = new Date();
+          const dateStr = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+          dbg(`FOUND: ${(rate * 100).toFixed(2)}% from ${pageUrl}`);
+          fs.writeFileSync(path.join(__dirname, "../data/boi-debug.json"),
+            JSON.stringify({ debugLines, source: pageUrl, rate, date: dateStr }, null, 2));
+          return { rate, date: dateStr };
         }
       }
-      dbg("homepage: not found");
+      dbg(`not found on ${pageUrl}`);
+    } catch (e) {
+      dbg(`error: ${e.message}`);
     }
-  } catch (e) {
-    dbg(`homepage error: ${e.message}`);
   }
 
   fs.writeFileSync(path.join(__dirname, "../data/boi-debug.json"),
