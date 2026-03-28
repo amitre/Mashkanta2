@@ -1,0 +1,15 @@
+{
+  "debugLines": [
+    "API: https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v1/series/download?id=IR01&format=json&startPeriod=2025-01-01",
+    "HTTP 404",
+    "API: https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v1/series/download?ids=IR01&format=json",
+    "HTTP 404",
+    "API: https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v2/series/download?id=IR01&format=json",
+    "HTTP 404",
+    "Fetching boi.org.il homepage…",
+    "HTTP 200",
+    "% occurrences: [\"100%@10393: img alt=\\\"\\\" class=\\\"img-fluid\\\" src=\\\"/media/sjzayi00/לוגו-מובייל.png\\\" style=\\\"width:100%\\\"></img></picture> </figure> </a> </div> \",\"7%@28490: l\\\"> <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D\",\"7%@28496:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D\",\"97%@28498:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%\",\"7%@28502:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D\",\"9%@28505:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%9\",\"7%@28508:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D\",\"91%@28510:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%\",\"7%@28514:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.a\",\"95%@28516:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.asp\",\"7%@28520:  <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.aspx\\\" t\",\"7%@28527: <a href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.aspx\\\" title=\\\"ח\",\"94%@28529:  href=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.aspx\\\" title=\\\"חיש\",\"7%@28533: f=\\\"https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.aspx\\\" title=\\\"חישוב ה\",\"6%@28536: https://www.cbs.gov.il/he/Pages/%D7%9E%D7%97%D7%A9%D7%91%D7%95%D7%9F-%D7%94%D7%A6%D7%9E%D7%93%D7%94-%D7%9C%D7%9E%D7%93%D7%93%D7%99%D7%9D.aspx\\\" title=\\\"חישוב הצמד\"]",
+    "homepage: not found"
+  ],
+  "source": null
+}
