@@ -85,7 +85,16 @@ function extractSurveyDate(html) {
   return null;
 }
 
-function parseRatesFromHtml(html) {
+/**
+ * Parse bank→rate pairs from one track's HTML page.
+ * Handles two formats in <td class="ribit2Compare">:
+ *   "3.20%"      — absolute rate (fixed/variable tracks)
+ *   "P -0.67%"   — prime-linked spread; actual rate = primeRate + spread
+ *
+ * @param {string} html
+ * @param {number|null} primeRate  — e.g. 0.055 (5.5%), needed for "P ±X%" rows
+ */
+function parseRatesFromHtml(html, primeRate) {
   const bankRates = {};
   const rowRe = /<tr[^>]+class="[^"]*mortgageHover[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi;
   let rm;
@@ -98,7 +107,19 @@ function parseRatesFromHtml(html) {
     const rateM = rowHtml.match(/<td[^>]+ribit2Compare[^>]*>([\s\S]*?)<\/td>/i);
     if (!rateM) continue;
     const rateText = rateM[1].replace(/<[^>]+>/g, "").trim();
-    const rateVal  = parseFloat(rateText.replace("%", ""));
+
+    let rateVal;
+    // "P -0.67%" or "P +0.10%" — prime-linked spread
+    const primeSpreadM = rateText.match(/^P\s*([+-]?\s*\d+(?:[.,]\d+)?)\s*%$/i);
+    if (primeSpreadM) {
+      if (primeRate == null) continue; // can't compute without prime rate
+      const spread = parseFloat(primeSpreadM[1].replace(/\s/g, "").replace(",", ".")) / 100;
+      if (isNaN(spread)) continue;
+      rateVal = (primeRate + spread) * 100; // convert back to % for unified handling below
+    } else {
+      rateVal = parseFloat(rateText.replace("%", "").replace(",", "."));
+    }
+
     if (!isNaN(rateVal) && rateVal > 0 && rateVal < 20) {
       bankRates[bankName] = Math.round(rateVal * 10000) / 10000 / 100;
     }
@@ -106,7 +127,7 @@ function parseRatesFromHtml(html) {
   return bankRates;
 }
 
-async function scrapeThemarker(loanAmount, years) {
+async function scrapeThemarker(loanAmount, years, primeRate) {
   const yearsParam = YEARS_MAP[years] || YEARS_MAP[25];
   const result = {};
   let surveyDate = null;
@@ -131,7 +152,7 @@ async function scrapeThemarker(loanAmount, years) {
     if (!res.ok) { console.warn(`  HTTP ${res.status} for ${url}`); continue; }
     const html = await res.text();
     if (!surveyDate) surveyDate = extractSurveyDate(html);
-    const bankRates = parseRatesFromHtml(html);
+    const bankRates = parseRatesFromHtml(html, primeRate);
     const count = Object.keys(bankRates).length;
     console.log(`  → ${count} banks found for ${trackKey}`);
     for (const [bankName, rate] of Object.entries(bankRates)) {
@@ -272,15 +293,17 @@ async function fetchBoiRate() {
 }
 
 async function main() {
-  console.log("Scraping mortgage rates from supermarker.themarker.com…");
-  const [{ banks, surveyDate }, boiResult] = await Promise.all([
-    scrapeThemarker(1_000_000, 25),
-    fetchBoiRate(),
-  ]);
+  // Fetch BoI rate FIRST — needed to compute prime-linked track rates
+  console.log("Fetching Bank of Israel base rate…");
+  const boiResult = await fetchBoiRate();
 
   // Prime rate = BoI base rate + 1.5%
   const boiRate        = boiResult?.rate         ?? null;
   const primeRate      = boiRate != null ? Math.round((boiRate + 0.015) * 10000) / 10000 : null;
+  console.log(`BoI: ${boiRate != null ? (boiRate * 100).toFixed(2) + "%" : "not found"}, prime: ${primeRate != null ? (primeRate * 100).toFixed(2) + "%" : "unknown"}`);
+
+  console.log("\nScraping mortgage rates from supermarker.themarker.com…");
+  const { banks, surveyDate } = await scrapeThemarker(1_000_000, 25, primeRate);
   const boiRateDate    = boiResult?.date         ?? null;
   const nextDecision   = boiResult?.nextDecision ?? null;
 
