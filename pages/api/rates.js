@@ -23,9 +23,10 @@ export default function handler(req, res) {
     banks:        cache.banks,
     surveyDate:   cache.surveyDate   || null,
     updatedAt:    cache.updatedAt    || null,
-    boiRate:      cache.boiRate      ?? null,
-    primeRate:    cache.primeRate    ?? null,
-    boiRateDate:  cache.boiRateDate  || null,
+    boiRate:       cache.boiRate       ?? null,
+    primeRate:     cache.primeRate     ?? null,
+    boiRateDate:   cache.boiRateDate   || null,
+    nextDecision:  cache.nextDecision  || null,
     live:         true,
     source:       "supermarker.themarker.com",
   });

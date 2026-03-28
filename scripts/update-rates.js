@@ -244,19 +244,20 @@ async function fetchBoiRate() {
         .map(m => `${m[0]}@${m.index}: "${textBlocks.slice(Math.max(0, m.index - 60), m.index + 60).replace(/\s+/g, " ")}"`);
       dbg(`% in text: ${JSON.stringify(pctHits)}`);
 
-      // Find a reasonable rate (1–15%) near "ריבית" within 300 chars
-      const rateRe = /ריבית[^%]{0,300}?(\d+(?:[.,]\d+)?)\s*%|(\d+(?:[.,]\d+)?)\s*%[^%]{0,300}?ריבית/g;
-      let m;
-      while ((m = rateRe.exec(textBlocks)) !== null) {
-        const raw = ((m[1] || m[2]) ?? "").replace(",", ".");
-        const rate = parseFloat(raw) / 100;
+      // Specific pattern: "ריבית בנק ישראל 4%" (the widget text)
+      const specificM = textBlocks.match(/ריבית\s*בנק\s*ישראל\s*(\d+(?:[.,]\d+)?)\s*%/);
+      if (specificM) {
+        const rate = parseFloat(specificM[1].replace(",", ".")) / 100;
         if (!isNaN(rate) && rate >= 0.01 && rate <= 0.15) {
+          // Also extract next decision date if present
+          const dateM = textBlocks.match(/מועד\s*ההחלטה\s*הבא[:\s]*(\d{2}\/\d{2}\/\d{4})/);
           const d = new Date();
-          const dateStr = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
-          dbg(`FOUND: ${(rate * 100).toFixed(2)}% from ${pageUrl}`);
+          const todayStr = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+          const dateStr = dateM ? dateM[1].replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$1.$2.$3") : todayStr;
+          dbg(`FOUND: ${(rate * 100).toFixed(2)}% nextDecision=${dateM?.[1]} from ${pageUrl}`);
           fs.writeFileSync(path.join(__dirname, "../data/boi-debug.json"),
-            JSON.stringify({ debugLines, source: pageUrl, rate, date: dateStr }, null, 2));
-          return { rate, date: dateStr };
+            JSON.stringify({ debugLines, source: pageUrl, rate, date: todayStr, nextDecision: dateM?.[1] }, null, 2));
+          return { rate, date: todayStr, nextDecision: dateM?.[1] };
         }
       }
       dbg(`not found on ${pageUrl}`);
@@ -278,16 +279,18 @@ async function main() {
   ]);
 
   // Prime rate = BoI base rate + 1.5%
-  const boiRate   = boiResult?.rate   ?? null;
-  const primeRate = boiRate != null ? Math.round((boiRate + 0.015) * 10000) / 10000 : null;
-  const boiRateDate = boiResult?.date ?? null;
+  const boiRate        = boiResult?.rate         ?? null;
+  const primeRate      = boiRate != null ? Math.round((boiRate + 0.015) * 10000) / 10000 : null;
+  const boiRateDate    = boiResult?.date         ?? null;
+  const nextDecision   = boiResult?.nextDecision ?? null;
 
   const data = {
     updatedAt:    new Date().toISOString(),
-    surveyDate:   surveyDate || null,
+    surveyDate:   surveyDate    || null,
     boiRate,
     primeRate,
     boiRateDate,
+    nextDecision,
     banks,
   };
 

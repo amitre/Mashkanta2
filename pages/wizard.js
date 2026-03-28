@@ -452,6 +452,9 @@ export default function Home() {
                         {ratesInfo.boiRateDate && (
                           <span style={s.primeRateDate}>עודכן: {ratesInfo.boiRateDate}</span>
                         )}
+                        {ratesInfo.nextDecision && (
+                          <span style={s.primeRateDate}>| החלטה הבאה: {ratesInfo.nextDecision}</span>
+                        )}
                       </div>
                     )}
                     {/* טבלת ריביות לפי בנק */}
