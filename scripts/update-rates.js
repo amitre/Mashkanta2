@@ -67,17 +67,20 @@ function mapTextToBank(text) {
   return null;
 }
 
+const HEBREW_MONTHS = [
+  "ינואר","פברואר","מרץ","אפריל","מאי","יוני",
+  "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
+];
+
 function extractSurveyDate(html) {
   const decoded = decodeEntities(html);
-  // Try several patterns to handle different page layouts / niqqud
-  const patterns = [
-    /סקר\s+([\u05D0-\u05EA\u05B0-\u05C7]+\s+\d{4})/,
-    /סקר[:\s]+([\u05D0-\u05EA\u05B0-\u05C7]+\s+\d{4})/,
-    /\bסקר\b[^<]{0,10}([\u05D0-\u05EA]{3,}\s+\d{4})/,
-  ];
-  for (const re of patterns) {
-    const m = decoded.match(re);
-    if (m) return m[1].trim();
+  // 1. Prefer "סקר <month> <year>" pattern
+  const withSurvey = decoded.match(/סקר[:\s]*([\u05D0-\u05EA\u05B0-\u05C7]+\s+\d{4})/);
+  if (withSurvey) return withSurvey[1].trim();
+  // 2. Fallback: find any Hebrew month name followed by a 4-digit year
+  for (const month of HEBREW_MONTHS) {
+    const m = decoded.match(new RegExp(month + "\\s+\\d{4}"));
+    if (m) return m[0].trim();
   }
   return null;
 }
