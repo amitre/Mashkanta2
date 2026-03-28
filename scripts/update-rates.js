@@ -69,8 +69,17 @@ function mapTextToBank(text) {
 
 function extractSurveyDate(html) {
   const decoded = decodeEntities(html);
-  const m = decoded.match(/סקר\s+([\u05D0-\u05EA]+\s+\d{4})/);
-  return m ? m[1].trim() : null;
+  // Try several patterns to handle different page layouts / niqqud
+  const patterns = [
+    /סקר\s+([\u05D0-\u05EA\u05B0-\u05C7]+\s+\d{4})/,
+    /סקר[:\s]+([\u05D0-\u05EA\u05B0-\u05C7]+\s+\d{4})/,
+    /\bסקר\b[^<]{0,10}([\u05D0-\u05EA]{3,}\s+\d{4})/,
+  ];
+  for (const re of patterns) {
+    const m = decoded.match(re);
+    if (m) return m[1].trim();
+  }
+  return null;
 }
 
 function parseRatesFromHtml(html) {
@@ -98,6 +107,19 @@ async function scrapeThemarker(loanAmount, years) {
   const yearsParam = YEARS_MAP[years] || YEARS_MAP[25];
   const result = {};
   let surveyDate = null;
+
+  // Fetch the base page first to get the survey date (it appears above the filters)
+  try {
+    console.log("  Fetching base page for survey date…");
+    const baseRes = await fetch(BASE_URL, { headers: BROWSER_HEADERS, redirect: "follow" });
+    if (baseRes.ok) {
+      const baseHtml = await baseRes.text();
+      surveyDate = extractSurveyDate(baseHtml);
+      console.log(`  Survey date: ${surveyDate || "(not found)"}`);
+    }
+  } catch (e) {
+    console.warn(`  Base page fetch failed: ${e.message}`);
+  }
 
   for (const { key: trackKey, product } of TRACKS) {
     const url = `${BASE_URL}?Years=${yearsParam}&Product=${product}&SUM=${loanAmount}`;
