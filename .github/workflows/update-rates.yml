@@ -1,0 +1,39 @@
+name: Update Mortgage Rates
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Scrape and update rates
+        run: node scripts/update-rates.js
+
+      - name: Commit updated rates
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/rates-cache.json
+          if git diff --cached --quiet; then
+            echo "No rate changes detected — skipping commit"
+          else
+            SURVEY=$(node -e "const d=require('./data/rates-cache.json'); console.log(d.surveyDate||'')")
+            git commit -m "עדכון ריביות משכנתא — $SURVEY"
+            git push origin HEAD:main
+          fi
