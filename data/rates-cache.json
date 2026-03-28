@@ -1,0 +1,78 @@
+{
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "surveyDate": "ינואר 2026",
+  "banks": [
+    {
+      "name": "בנק הפועלים",
+      "prime": 0.056,
+      "fixed_cpi": 0.035,
+      "fixed_unlinked": 0.055,
+      "variable_cpi": 0.028,
+      "variable_cpi_1yr": 0.026,
+      "variable_unlinked": 0.048
+    },
+    {
+      "name": "הבנק הבינלאומי",
+      "prime": 0.055,
+      "fixed_cpi": 0.037,
+      "fixed_unlinked": 0.053,
+      "variable_cpi": 0.027,
+      "variable_cpi_1yr": 0.025,
+      "variable_unlinked": 0.049
+    },
+    {
+      "name": "בנק לאומי",
+      "prime": 0.054,
+      "fixed_cpi": 0.036,
+      "fixed_unlinked": 0.057,
+      "variable_cpi": 0.029,
+      "variable_cpi_1yr": 0.027,
+      "variable_unlinked": 0.047
+    },
+    {
+      "name": "בנק מזרחי-טפחות",
+      "prime": 0.058,
+      "fixed_cpi": 0.034,
+      "fixed_unlinked": 0.058,
+      "variable_cpi": 0.027,
+      "variable_cpi_1yr": 0.025,
+      "variable_unlinked": 0.05
+    },
+    {
+      "name": "בנק דיסקונט",
+      "prime": 0.057,
+      "fixed_cpi": 0.036,
+      "fixed_unlinked": 0.054,
+      "variable_cpi": 0.03,
+      "variable_cpi_1yr": 0.028,
+      "variable_unlinked": 0.046
+    },
+    {
+      "name": "בנק אגוד",
+      "prime": 0.055,
+      "fixed_cpi": 0.038,
+      "fixed_unlinked": 0.053,
+      "variable_cpi": 0.031,
+      "variable_cpi_1yr": 0.029,
+      "variable_unlinked": 0.051
+    },
+    {
+      "name": "אוצר החייל",
+      "prime": 0.059,
+      "fixed_cpi": 0.033,
+      "fixed_unlinked": 0.056,
+      "variable_cpi": 0.026,
+      "variable_cpi_1yr": 0.024,
+      "variable_unlinked": 0.045
+    },
+    {
+      "name": "בנק מרכנתיל",
+      "prime": 0.053,
+      "fixed_cpi": 0.037,
+      "fixed_unlinked": 0.052,
+      "variable_cpi": 0.03,
+      "variable_cpi_1yr": 0.028,
+      "variable_unlinked": 0.05
+    }
+  ]
+}
