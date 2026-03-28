@@ -127,42 +127,26 @@ function parseRatesFromHtml(html, primeRate) {
   return bankRates;
 }
 
-async function scrapeThemarker(loanAmount, years, primeRate) {
-  const yearsParam = YEARS_MAP[years] || YEARS_MAP[25];
+/**
+ * Scrape all tracks for a single (loanAmount, years) combination.
+ * Returns { banks: [...], surveyDate } for that combination.
+ */
+async function scrapeOneCombination(loanAmount, years, primeRate, sharedSurveyRef) {
+  const yearsParam = YEARS_MAP[years];
   const result = {};
-  let surveyDate = null;
-
-  // Fetch the base page first to get the survey date (it appears above the filters)
-  try {
-    console.log("  Fetching base page for survey date…");
-    const baseRes = await fetch(BASE_URL, { headers: BROWSER_HEADERS, redirect: "follow" });
-    if (baseRes.ok) {
-      const baseHtml = await baseRes.text();
-      surveyDate = extractSurveyDate(baseHtml);
-      console.log(`  Survey date: ${surveyDate || "(not found)"}`);
-    }
-  } catch (e) {
-    console.warn(`  Base page fetch failed: ${e.message}`);
-  }
 
   for (const { key: trackKey, product } of TRACKS) {
     const url = `${BASE_URL}?Years=${yearsParam}&Product=${product}&SUM=${loanAmount}`;
-    console.log(`  Fetching track ${trackKey} (product=${product})…`);
     const res = await fetch(url, { headers: BROWSER_HEADERS, redirect: "follow" });
     if (!res.ok) { console.warn(`  HTTP ${res.status} for ${url}`); continue; }
     const html = await res.text();
-    if (!surveyDate) surveyDate = extractSurveyDate(html);
+    if (!sharedSurveyRef.date) sharedSurveyRef.date = extractSurveyDate(html);
     const bankRates = parseRatesFromHtml(html, primeRate);
-    const count = Object.keys(bankRates).length;
-    console.log(`  → ${count} banks found for ${trackKey}`);
     for (const [bankName, rate] of Object.entries(bankRates)) {
       if (!result[bankName]) result[bankName] = {};
       result[bankName][trackKey] = rate;
     }
   }
-
-  if (Object.keys(result).length === 0)
-    throw new Error("No bank rates found — site structure may have changed");
 
   const banks = Object.entries(result).map(([name, rates]) => ({
     name,
@@ -174,7 +158,41 @@ async function scrapeThemarker(loanAmount, years, primeRate) {
     variable_unlinked: rates.variable_unlinked  ?? DEFAULT_RATES.variable_unlinked,
   }));
 
-  return { banks, surveyDate };
+  return banks;
+}
+
+/**
+ * Scrape all 6 year options with a standard 1,000,000 NIS loan.
+ * Returns { byYears: { 5: [...], 10: [...], ... }, surveyDate }
+ */
+async function scrapeThemarker(loanAmount, primeRate) {
+  // Fetch base page first for survey date
+  let surveyDate = null;
+  try {
+    console.log("  Fetching base page for survey date…");
+    const baseRes = await fetch(BASE_URL, { headers: BROWSER_HEADERS, redirect: "follow" });
+    if (baseRes.ok) {
+      surveyDate = extractSurveyDate(await baseRes.text());
+      console.log(`  Survey date: ${surveyDate || "(not found)"}`);
+    }
+  } catch (e) {
+    console.warn(`  Base page fetch failed: ${e.message}`);
+  }
+
+  const sharedSurveyRef = { date: surveyDate };
+  const byYears = {};
+
+  for (const years of [5, 10, 15, 20, 25, 30]) {
+    console.log(`\n  === ${years} years ===`);
+    const banks = await scrapeOneCombination(loanAmount, years, primeRate, sharedSurveyRef);
+    byYears[years] = banks;
+    console.log(`  → ${banks.length} banks`);
+  }
+
+  if (Object.keys(byYears).every(y => byYears[y].length === 0))
+    throw new Error("No bank rates found — site structure may have changed");
+
+  return { byYears, surveyDate: sharedSurveyRef.date || surveyDate };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,7 +321,7 @@ async function main() {
   console.log(`BoI: ${boiRate != null ? (boiRate * 100).toFixed(2) + "%" : "not found"}, prime: ${primeRate != null ? (primeRate * 100).toFixed(2) + "%" : "unknown"}`);
 
   console.log("\nScraping mortgage rates from supermarker.themarker.com…");
-  const { banks, surveyDate } = await scrapeThemarker(1_000_000, 25, primeRate);
+  const { byYears, surveyDate } = await scrapeThemarker(1_000_000, primeRate);
   const boiRateDate    = boiResult?.date         ?? null;
   const nextDecision   = boiResult?.nextDecision ?? null;
 
@@ -314,17 +332,19 @@ async function main() {
     primeRate,
     boiRateDate,
     nextDecision,
-    banks,
+    byYears,  // { "5": [...banks], "10": [...], ..., "30": [...] }
   };
 
   const outPath = path.join(__dirname, "../data/rates-cache.json");
   fs.writeFileSync(outPath, JSON.stringify(data, null, 2) + "\n", "utf8");
-  console.log(`\nSaved ${banks.length} banks to ${outPath}`);
+  const sampleBanks = byYears[25] || byYears[30] || Object.values(byYears)[0] || [];
+  console.log(`\nSaved to ${outPath}`);
   console.log(`Survey date: ${surveyDate}`);
   console.log(`BoI base rate: ${boiRate != null ? (boiRate * 100).toFixed(2) + "%" : "not found"}`);
   console.log(`Prime rate: ${primeRate != null ? (primeRate * 100).toFixed(2) + "%" : "not found"}`);
-  console.log("Banks:");
-  banks.forEach(b => console.log(`  ${b.name}: prime=${(b.prime*100).toFixed(2)}%`));
+  console.log(`Year buckets: ${Object.keys(byYears).join(", ")} (banks: ${sampleBanks.length})`);
+  console.log("Sample (25yr):");
+  sampleBanks.forEach(b => console.log(`  ${b.name}: prime=${(b.prime*100).toFixed(2)}% fixed_unlinked=${(b.fixed_unlinked*100).toFixed(2)}%`));
 }
 
 main().catch(err => { console.error("Error:", err.message); process.exit(1); });
