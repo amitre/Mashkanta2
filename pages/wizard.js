@@ -439,10 +439,25 @@ export default function Home() {
               <div style={ratesInfo.live ? s.liveBadge : s.defaultBadge}>
                 {ratesInfo.live ? (
                   <>
+                    {/* ריבית פריים מבנק ישראל */}
+                    {ratesInfo.primeRate != null && (
+                      <div style={s.primeRateBanner}>
+                        <span style={s.primeRateValue}>{(ratesInfo.primeRate * 100).toFixed(2)}%</span>
+                        <span style={s.primeRateLabel}>ריבית פריים</span>
+                        {ratesInfo.boiRate != null && (
+                          <span style={s.primeRateSub}>
+                            ריבית בנק ישראל {(ratesInfo.boiRate * 100).toFixed(2)}% + 1.5%
+                          </span>
+                        )}
+                        {ratesInfo.boiRateDate && (
+                          <span style={s.primeRateDate}>עודכן: {ratesInfo.boiRateDate}</span>
+                        )}
+                      </div>
+                    )}
                     {/* טבלת ריביות לפי בנק */}
                     {ratesInfo.surveyDate && (
                       <div style={{ fontSize: "12px", color: "#718096", marginBottom: "6px" }}>
-                        ריביות משכנתא מומלצות לפי מסלול, סכום ותקופה &nbsp;|&nbsp; סקר {ratesInfo.surveyDate}
+                        ריביות משכנתא לפי מסלול &nbsp;|&nbsp; סקר {ratesInfo.surveyDate}
                       </div>
                     )}
                     <div style={s.bankRatesTable}>
@@ -712,6 +727,25 @@ const s = {
   backBtn: {
     flex: "1", padding: "13px", backgroundColor: "#fff", color: "#4a5568",
     fontSize: "15px", fontWeight: "600", border: "2px solid #e2e8f0", borderRadius: "10px", cursor: "pointer",
+  },
+
+  // Prime rate banner
+  primeRateBanner: {
+    display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap",
+    backgroundColor: "#ebf8ff", border: "1px solid #90cdf4",
+    borderRadius: "8px", padding: "8px 14px", marginBottom: "10px",
+  },
+  primeRateValue: {
+    fontSize: "22px", fontWeight: "800", color: "#2b6cb0",
+  },
+  primeRateLabel: {
+    fontSize: "13px", fontWeight: "700", color: "#2c5282",
+  },
+  primeRateSub: {
+    fontSize: "11px", color: "#4a5568",
+  },
+  primeRateDate: {
+    fontSize: "11px", color: "#718096", marginRight: "auto",
   },
 
   // Live badge

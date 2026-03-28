@@ -20,10 +20,13 @@ export default function handler(req, res) {
   }
 
   return res.status(200).json({
-    banks:       cache.banks,
-    surveyDate:  cache.surveyDate || null,
-    updatedAt:   cache.updatedAt  || null,
-    live:        true,
-    source:      "supermarker.themarker.com",
+    banks:        cache.banks,
+    surveyDate:   cache.surveyDate   || null,
+    updatedAt:    cache.updatedAt    || null,
+    boiRate:      cache.boiRate      ?? null,
+    primeRate:    cache.primeRate    ?? null,
+    boiRateDate:  cache.boiRateDate  || null,
+    live:         true,
+    source:       "supermarker.themarker.com",
   });
 }

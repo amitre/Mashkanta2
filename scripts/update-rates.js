@@ -156,13 +156,117 @@ async function scrapeThemarker(loanAmount, years) {
   return { banks, surveyDate };
 }
 
+// ---------------------------------------------------------------------------
+// Bank of Israel base rate
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches the Bank of Israel base interest rate.
+ * Tries the BoI statistics API first, falls back to scraping the homepage.
+ * Returns { rate: 0.04, date: "28.3.2026" } or null.
+ */
+async function fetchBoiRate() {
+  // Method 1: BoI open data API (edge.boi.gov.il)
+  try {
+    console.log("  Fetching BoI rate from API…");
+    const today = new Date();
+    const startPeriod = `${today.getFullYear() - 1}-01-01`;
+    const apiUrl = `https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v1/series/download?id=IR01&format=json&startPeriod=${startPeriod}`;
+    const res = await fetch(apiUrl, {
+      headers: { ...BROWSER_HEADERS, Accept: "application/json" },
+      redirect: "follow",
+    });
+    if (res.ok) {
+      const text = await res.text();
+      console.log("  BoI API raw (first 500):", text.slice(0, 500));
+      const data = JSON.parse(text);
+      // Try several known response shapes
+      const obs =
+        data?.seriesData?.[0]?.observations ||
+        data?.SeriesToReturn?.[0]?.Observations ||
+        data?.data ||
+        (Array.isArray(data) ? data : null);
+      if (obs && obs.length > 0) {
+        const last = obs[obs.length - 1];
+        const rawVal = last.value ?? last.Value ?? last.val;
+        const rawDate = last.period ?? last.TimePeriod ?? last.date;
+        const rate = parseFloat(rawVal) / 100;
+        if (!isNaN(rate) && rate > 0 && rate < 0.5) {
+          const dateStr = rawDate ? String(rawDate).replace(/(\d{4})-(\d{2}).*/, "$2/$1") : null;
+          console.log(`  BoI rate from API: ${(rate * 100).toFixed(2)}% (${dateStr})`);
+          return { rate, date: dateStr };
+        }
+      }
+      console.warn("  BoI API: unexpected structure, trying fallback");
+    } else {
+      console.warn(`  BoI API HTTP ${res.status}`);
+    }
+  } catch (e) {
+    console.warn("  BoI API failed:", e.message);
+  }
+
+  // Method 2: Scrape boi.org.il homepage
+  try {
+    console.log("  Fetching BoI rate from homepage…");
+    const res = await fetch("https://www.boi.org.il/", {
+      headers: BROWSER_HEADERS,
+      redirect: "follow",
+    });
+    if (!res.ok) { console.warn(`  BoI homepage HTTP ${res.status}`); return null; }
+    const html = await res.text();
+    const decoded = decodeEntities(html);
+    // Log a snippet around "ריבית" to help diagnose if pattern fails
+    const snippet = decoded.match(/[\s\S]{0,200}ריבית בנק ישראל[\s\S]{0,200}/)?.[0] || "";
+    console.log("  BoI homepage snippet:", snippet.replace(/\s+/g, " ").slice(0, 400));
+
+    // Look for the rate near "ריבית בנק ישראל"
+    const patterns = [
+      /(\d+(?:[.,]\d+)?)\s*%[^<]{0,300}ריבית\s*בנק\s*ישראל/,
+      /ריבית\s*בנק\s*ישראל[^<]{0,100}(\d+(?:[.,]\d+)?)\s*%/,
+      // Sometimes the rate appears before the label in the DOM
+      /<[^>]+>(\d+(?:[.,]\d+)?)\s*%\s*<\/[^>]+>\s*(?:<[^>]+>\s*)*ריבית\s*בנק\s*ישראל/,
+    ];
+    for (const re of patterns) {
+      const m = decoded.match(re);
+      if (m) {
+        const raw = m[1] || m[2];
+        if (raw) {
+          const rate = parseFloat(raw.replace(",", ".")) / 100;
+          if (!isNaN(rate) && rate > 0 && rate < 0.5) {
+            const d = new Date();
+            const dateStr = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+            console.log(`  BoI rate from homepage: ${(rate * 100).toFixed(2)}%`);
+            return { rate, date: dateStr };
+          }
+        }
+      }
+    }
+    console.warn("  BoI homepage: rate not found in HTML");
+  } catch (e) {
+    console.warn("  BoI homepage failed:", e.message);
+  }
+
+  return null;
+}
+
 async function main() {
   console.log("Scraping mortgage rates from supermarker.themarker.com…");
-  const { banks, surveyDate } = await scrapeThemarker(1_000_000, 25);
+  const [{ banks, surveyDate }, boiResult] = await Promise.all([
+    scrapeThemarker(1_000_000, 25),
+    fetchBoiRate(),
+  ]);
+
+  // Prime rate = BoI base rate + 1.5%
+  const boiRate   = boiResult?.rate   ?? null;
+  const primeRate = boiRate != null ? Math.round((boiRate + 0.015) * 10000) / 10000 : null;
+  const boiRateDate = boiResult?.date ?? null;
 
   const data = {
-    updatedAt: new Date().toISOString(),
-    surveyDate: surveyDate || null,
+    updatedAt:    new Date().toISOString(),
+    surveyDate:   surveyDate || null,
+    boiRate,
+    primeRate,
+    boiRateDate,
     banks,
   };
 
@@ -170,6 +274,8 @@ async function main() {
   fs.writeFileSync(outPath, JSON.stringify(data, null, 2) + "\n", "utf8");
   console.log(`\nSaved ${banks.length} banks to ${outPath}`);
   console.log(`Survey date: ${surveyDate}`);
+  console.log(`BoI base rate: ${boiRate != null ? (boiRate * 100).toFixed(2) + "%" : "not found"}`);
+  console.log(`Prime rate: ${primeRate != null ? (primeRate * 100).toFixed(2) + "%" : "not found"}`);
   console.log("Banks:");
   banks.forEach(b => console.log(`  ${b.name}: prime=${(b.prime*100).toFixed(2)}%`));
 }
