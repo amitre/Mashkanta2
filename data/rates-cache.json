@@ -1,9 +1,9 @@
 {
-  "updatedAt": "2026-03-28T07:37:28.364Z",
+  "updatedAt": "2026-03-28T07:39:50.692Z",
   "surveyDate": "ינואר 2026",
-  "boiRate": null,
-  "primeRate": null,
-  "boiRateDate": null,
+  "boiRate": 0.027999999999999997,
+  "primeRate": 0.043,
+  "boiRateDate": "28.3.2026",
   "banks": [
     {
       "name": "בנק הפועלים",
