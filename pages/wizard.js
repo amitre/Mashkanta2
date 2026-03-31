@@ -12,7 +12,6 @@ const APARTMENT_STATUS = [
   { id: "first", label: "דירה ראשונה", maxLtv: 75 },
   { id: "second", label: "דירה שנייה +", maxLtv: 70 },
   { id: "investor", label: "משקיע", maxLtv: 50 },
-  { id: "new_immigrant", label: "עולה חדש", maxLtv: 75 },
 ];
 
 const GOALS = [
