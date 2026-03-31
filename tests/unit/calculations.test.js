@@ -40,6 +40,8 @@ describe("calcTotalInterest", () => {
   });
 });
 
+const FIXED_TRACKS = ["fixed_unlinked", "fixed_cpi"];
+
 describe("recommendMix", () => {
   test("stability → fixed_unlinked at 50%", () => {
     const mix = recommendMix(["stability"]);
@@ -64,6 +66,26 @@ describe("recommendMix", () => {
   test("empty goals → returns default mix", () => {
     const mix = recommendMix([]);
     expect(mix.length).toBeGreaterThan(0);
+  });
+
+  // חוק ריבית קבועה: לפחות 33% מהתמהיל בריבית קבועה
+  test("כל תמהיל מכיל לפחות 33% ריבית קבועה (חוק רגולטורי)", () => {
+    const allGoalCombinations = [
+      ["stability"],
+      ["low_monthly"],
+      ["early_repay"],
+      ["low_total"],
+      ["stability", "low_total"],
+      ["low_monthly", "early_repay"],
+      [],
+    ];
+    for (const goals of allGoalCombinations) {
+      const mix = recommendMix(goals);
+      const fixedPct = mix
+        .filter((m) => FIXED_TRACKS.includes(m.track))
+        .reduce((sum, m) => sum + m.pct, 0);
+      expect(fixedPct).toBeGreaterThanOrEqual(33);
+    }
   });
 });
 
