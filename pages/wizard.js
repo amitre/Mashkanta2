@@ -219,7 +219,7 @@ export default function Home() {
                 <CalcBox label="גובה המשכנתא" value={`₪${fmt(loanAmount)}`} color="#2b6cb0" />
                 <CalcBox
                   label="יחס מימון (LTV)"
-                  value={`${ltv.toFixed(1)}%`}
+                  value={ltv != null ? `${ltv.toFixed(1)}%` : "—"}
                   color={ltvOk ? "#38a169" : "#e53e3e"}
                   note={maxLtv ? `מקסימום ${maxLtv}% לסטטוס שנבחר` : ""}
                 />
