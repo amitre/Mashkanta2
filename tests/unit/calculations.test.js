@@ -43,11 +43,11 @@ describe("calcTotalInterest", () => {
 const FIXED_TRACKS = ["fixed_unlinked", "fixed_cpi"];
 
 describe("recommendMix", () => {
-  test("stability → fixed_unlinked at 50%", () => {
+  test("stability → fixed_unlinked at 67%", () => {
     const mix = recommendMix(["stability"]);
     const fixedUnlinked = mix.find((m) => m.track === "fixed_unlinked");
     expect(fixedUnlinked).toBeDefined();
-    expect(fixedUnlinked.pct).toBe(50);
+    expect(fixedUnlinked.pct).toBe(67);
   });
 
   test("low_monthly → prime is in mix", () => {
@@ -85,6 +85,18 @@ describe("recommendMix", () => {
         .filter((m) => FIXED_TRACKS.includes(m.track))
         .reduce((sum, m) => sum + m.pct, 0);
       expect(fixedPct).toBeGreaterThanOrEqual(33);
+    }
+  });
+
+  // כלל מסלול קבוע יחיד: אין לשלב קל"צ + ק"צ יחד
+  test("כל תמהיל מכיל לכל היותר מסלול קבוע אחד (לא קל\"צ + ק\"צ יחד)", () => {
+    const allGoalCombinations = [
+      ["stability"], ["low_monthly"], ["early_repay"], ["low_total"], [],
+    ];
+    for (const goals of allGoalCombinations) {
+      const mix = recommendMix(goals);
+      const fixedTracks = mix.filter((m) => FIXED_TRACKS.includes(m.track));
+      expect(fixedTracks.length).toBeLessThanOrEqual(1);
     }
   });
 });
