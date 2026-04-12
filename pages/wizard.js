@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { recommendMix, calcMonthly, calcTotalInterest, scoreBank } from "../lib/calculations";
+import { recommendMix, calcMonthly, calcTotalInterest, scoreBank, effectivePrimeRate } from "../lib/calculations";
 
 const STEPS = [
   { id: 1, label: "הלוואה" },
@@ -136,8 +136,14 @@ export default function Home() {
 
   // Best bank mix details
   const bestBank = top3[0]?.bank;
+  const primePct = (mix.find((m) => m.track === "prime") || {}).pct || 0;
   const mixDetails = mix.map(({ track, pct }) => {
-    const rate = bestBank ? (bestBank[track] || 0.06) : 0.06;
+    let rate;
+    if (track === "prime" && ratesInfo?.primeRate != null) {
+      rate = effectivePrimeRate(ratesInfo.primeRate, primePct);
+    } else {
+      rate = bestBank ? (bestBank[track] || 0.06) : 0.06;
+    }
     const portion = (loan * pct) / 100;
     const monthly = calcMonthly(portion, rate, yrs);
     return { track, pct, portion, monthly, rate };
