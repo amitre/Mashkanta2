@@ -1,4 +1,4 @@
-const { calcMonthly, calcTotalInterest, recommendMix, scoreBank } = require("../../lib/calculations");
+const { calcMonthly, calcTotalInterest, recommendMix, scoreBank, getPrimeSpread, effectivePrimeRate } = require("../../lib/calculations");
 
 describe("calcMonthly", () => {
   test("500k NIS, 5%, 30yr ≈ 2684.11", () => {
@@ -101,18 +101,47 @@ describe("recommendMix", () => {
   });
 });
 
+describe("getPrimeSpread", () => {
+  test("פחות מ-40% → P-0.85%", () => {
+    expect(getPrimeSpread(33)).toBeCloseTo(-0.0085, 5);
+    expect(getPrimeSpread(39)).toBeCloseTo(-0.0085, 5);
+  });
+  test("40%-50% → P-0.75%", () => {
+    expect(getPrimeSpread(40)).toBeCloseTo(-0.0075, 5);
+    expect(getPrimeSpread(50)).toBeCloseTo(-0.0075, 5);
+  });
+  test("מעל 50% → P-0.60%", () => {
+    expect(getPrimeSpread(51)).toBeCloseTo(-0.006, 5);
+    expect(getPrimeSpread(67)).toBeCloseTo(-0.006, 5);
+  });
+});
+
+describe("effectivePrimeRate", () => {
+  const P = 0.055; // 5.5%
+  test("33% פריים → 5.5% - 0.85% = 4.65%", () => {
+    expect(effectivePrimeRate(P, 33)).toBeCloseTo(0.0465, 5);
+  });
+  test("45% פריים → 5.5% - 0.75% = 4.75%", () => {
+    expect(effectivePrimeRate(P, 45)).toBeCloseTo(0.0475, 5);
+  });
+  test("67% פריים → 5.5% - 0.60% = 4.90%", () => {
+    expect(effectivePrimeRate(P, 67)).toBeCloseTo(0.049, 5);
+  });
+});
+
 describe("scoreBank", () => {
   const bankA = { prime: 0.05, fixed_cpi: 0.03, fixed_unlinked: 0.045, variable_cpi: 0.028, variable_unlinked: 0.044, variable_cpi_1yr: 0.024 };
   const bankB = { prime: 0.06, fixed_cpi: 0.04, fixed_unlinked: 0.055, variable_cpi: 0.038, variable_unlinked: 0.054, variable_cpi_1yr: 0.034 };
+  const PRIME_RATE = 0.055;
 
   test("cheaper bank gets lower score", () => {
-    const scoreA = scoreBank(bankA, ["stability"], 1000000, 25).score;
-    const scoreB = scoreBank(bankB, ["stability"], 1000000, 25).score;
+    const scoreA = scoreBank(bankA, ["stability"], 1000000, 25, PRIME_RATE).score;
+    const scoreB = scoreBank(bankB, ["stability"], 1000000, 25, PRIME_RATE).score;
     expect(scoreA).toBeLessThan(scoreB);
   });
 
   test("returns totalMonthly and totalInterest", () => {
-    const result = scoreBank(bankA, ["low_total"], 500000, 20);
+    const result = scoreBank(bankA, ["low_total"], 500000, 20, PRIME_RATE);
     expect(result.totalMonthly).toBeGreaterThan(0);
     expect(result.totalInterest).toBeGreaterThan(0);
     expect(result.score).toBeGreaterThan(0);
@@ -120,7 +149,13 @@ describe("scoreBank", () => {
 
   test("fallback for missing variable_cpi", () => {
     const bankNoCpi = { prime: 0.05, fixed_cpi: 0.03, fixed_unlinked: 0.045, variable_unlinked: 0.044 };
-    const result = scoreBank(bankNoCpi, ["low_monthly"], 500000, 25);
+    const result = scoreBank(bankNoCpi, ["low_monthly"], 500000, 25, PRIME_RATE);
+    expect(result.totalMonthly).toBeGreaterThan(0);
+  });
+
+  test("עם primeRate — ריבית פריים אפקטיבית נמוכה יותר מריבית הבנק", () => {
+    // פריים 33% בתמהיל → ספרד P-0.85% → ריבית אפקטיבית 4.65% (נמוכה מ-5% של הבנק)
+    const result = scoreBank(bankA, ["stability"], 1000000, 25, PRIME_RATE);
     expect(result.totalMonthly).toBeGreaterThan(0);
   });
 });
