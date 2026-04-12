@@ -421,7 +421,7 @@ export default function Home() {
                       {ratesInfo.banks.map((bank, i) => (
                         <div key={bank.name} style={{ ...s.bankRatesRow, backgroundColor: i % 2 === 0 ? "#f0fff4" : "#fff" }}>
                           <span style={{ fontWeight: "600", color: "#1a202c" }}>{bank.name.replace("בנק ", "")}</span>
-                          <span>{(bank.prime * 100).toFixed(2)}%</span>
+                          <span>{ratesInfo?.primeRate != null ? (effectivePrimeRate(ratesInfo.primeRate, primePct) * 100).toFixed(2) : (bank.prime * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_cpi * 100).toFixed(2)}%</span>
                           <span>{(bank.fixed_unlinked * 100).toFixed(2)}%</span>
                           <span>{((bank.variable_cpi     || 0.028) * 100).toFixed(2)}%</span>
@@ -458,7 +458,7 @@ export default function Home() {
                     <div style={{ flex: 1 }}>
                       <div style={s.bankName}>{bank.name}</div>
                       <div style={s.bankRates}>
-                        פריים {(bank.prime * 100).toFixed(2)}% &nbsp;|&nbsp;
+                        פריים {ratesInfo?.primeRate != null ? (effectivePrimeRate(ratesInfo.primeRate, primePct) * 100).toFixed(2) : (bank.prime * 100).toFixed(2)}% &nbsp;|&nbsp;
                         קבועה לא צמודה {(bank.fixed_unlinked * 100).toFixed(2)}% &nbsp;|&nbsp;
                         קבועה צמודה {(bank.fixed_cpi * 100).toFixed(2)}%
                       </div>
