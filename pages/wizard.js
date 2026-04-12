@@ -129,7 +129,7 @@ export default function Home() {
   // Top 3 banks ranked by score
   const top3 = ratesInfo?.banks
     ? ratesInfo.banks
-        .map((bank) => scoreBank(bank, goals, loan, yrs))
+        .map((bank) => scoreBank(bank, goals, loan, yrs, ratesInfo?.primeRate))
         .sort((a, b) => a.score - b.score)
         .slice(0, 3)
     : [];
