@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { recommendMix, calcMonthly, calcTotalInterest, scoreBank, effectivePrimeRate } from "../lib/calculations";
+import { recommendMix, calcMonthly, calcTotalInterest, scoreBank, effectivePrimeRate, convertToCpiLinked } from "../lib/calculations";
 
 const STEPS = [
   { id: 1, label: "הלוואה" },
@@ -48,6 +48,7 @@ export default function Home() {
 
   // Step 3
   const [income, setIncome] = useState("15000");
+  const [disposableIncome, setDisposableIncome] = useState("");
   const [borrowers, setBorrowers] = useState("1");
   const [years, setYears] = useState("25");
 
@@ -65,6 +66,7 @@ export default function Home() {
         if (d.apartmentStatus) setApartmentStatus(d.apartmentStatus);
         if (d.goals?.length) setGoals(d.goals);
         if (d.income) setIncome(d.income);
+        if (d.disposableIncome) setDisposableIncome(d.disposableIncome);
         if (d.borrowers) setBorrowers(d.borrowers);
         if (d.years) setYears(d.years);
         if (d.step && d.step < 4) setStep(d.step);
@@ -76,10 +78,10 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem("wizard_state", JSON.stringify({
-        propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step,
+        propertyValue, equity, apartmentStatus, goals, income, disposableIncome, borrowers, years, step,
       }));
     } catch {}
-  }, [propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step]);
+  }, [propertyValue, equity, apartmentStatus, goals, income, disposableIncome, borrowers, years, step]);
 
   const loanAmount =
     parseFloat(propertyValue) && parseFloat(equity)
@@ -124,12 +126,40 @@ export default function Home() {
   const loan = loanAmount || 0;
   const yrs = parseInt(years) || 25;
   const totalIncome = parseFloat(income) * parseInt(borrowers || 1);
-  const mix = recommendMix(goals);
+  const monthlyInsurance = loan > 0 ? Math.round(loan * 0.00007 + 90) : 0;
 
-  // Top 3 banks ranked by score
+  // Base mix (goal-based) — used to check CPI constraint
+  const baseMix = recommendMix(goals);
+  const baseTop3 = ratesInfo?.banks
+    ? ratesInfo.banks
+        .map((bank) => scoreBank(bank, goals, loan, yrs, ratesInfo?.primeRate, false))
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 3)
+    : [];
+  const bestBankBase = baseTop3[0]?.bank;
+  const basePrimePct = (baseMix.find((m) => m.track === "prime") || {}).pct || 0;
+  const baseTotalMonthly = baseMix.reduce((s, { track, pct }) => {
+    let rate;
+    if (track === "prime" && ratesInfo?.primeRate != null) {
+      rate = effectivePrimeRate(ratesInfo.primeRate, basePrimePct);
+    } else {
+      rate = bestBankBase ? (bestBankBase[track] || 0.06) : 0.06;
+    }
+    return s + calcMonthly((loan * pct) / 100, rate, yrs);
+  }, 0);
+  const baseTotalWithExtras = baseTotalMonthly + monthlyInsurance;
+
+  // CPI-only constraint: החזר > 40% מהכנסה פנויה → כל המסלולים צמודי מדד
+  const disposableIncomeParsed = parseFloat(disposableIncome) || 0;
+  const forceCpiLinked = disposableIncomeParsed > 0 && baseTotalWithExtras > disposableIncomeParsed * 0.4;
+
+  // Effective mix
+  const mix = forceCpiLinked ? convertToCpiLinked(baseMix) : baseMix;
+
+  // Top 3 banks ranked by score (using effective mix)
   const top3 = ratesInfo?.banks
     ? ratesInfo.banks
-        .map((bank) => scoreBank(bank, goals, loan, yrs, ratesInfo?.primeRate))
+        .map((bank) => scoreBank(bank, goals, loan, yrs, ratesInfo?.primeRate, forceCpiLinked))
         .sort((a, b) => a.score - b.score)
         .slice(0, 3)
     : [];
@@ -149,13 +179,12 @@ export default function Home() {
     return { track, pct, portion, monthly, rate };
   });
   const totalMonthly = mixDetails.reduce((s, d) => s + d.monthly, 0);
-  // Estimated monthly add-ons: life insurance + property insurance
-  const monthlyInsurance = loan > 0 ? Math.round(loan * 0.00007 + 90) : 0;
   const totalWithExtras = totalMonthly + monthlyInsurance;
   // One-time opening fee estimate
   const openingFee = loan > 0 ? Math.round(Math.min(Math.max(loan * 0.002, 3600), 7500)) : 0;
   const paymentToIncome = totalIncome > 0 ? (totalWithExtras / totalIncome) * 100 : null;
   const affordabilityOk = paymentToIncome ? paymentToIncome <= 40 : true;
+  const disposablePaymentRatio = disposableIncomeParsed > 0 ? (totalWithExtras / disposableIncomeParsed) * 100 : null;
 
   return (
     <div dir="rtl" style={s.page}>
@@ -317,6 +346,12 @@ export default function Home() {
 
             <div style={s.fieldGroup}>
               <Field label="הכנסה חודשית נטו (₪)" placeholder="לדוגמה: 15,000" value={income} onChange={setIncome} />
+              <Field label="הכנסה פנויה (₪)" placeholder="לדוגמה: 8,000" value={disposableIncome} onChange={setDisposableIncome} />
+            </div>
+            <div style={{ fontSize: "12px", color: "#718096", marginTop: "4px", marginBottom: "16px" }}>
+              הכנסה פנויה = מה שנשאר לאחר ניכוי הוצאות קבועות (שכ"ד, מזון, תחבורה וכד׳). קובעת את סוג המסלולים בתמהיל.
+            </div>
+            <div style={s.fieldGroup}>
               <div style={s.field}>
                 <label style={s.label}>מספר לווים</label>
                 <div style={{ display: "flex", gap: "10px", marginTop: "2px" }}>
@@ -479,6 +514,13 @@ export default function Home() {
               </h2>
               <p style={s.cardSub}>פילוח המסלולים בהתאם לעדפות שלך</p>
 
+              {forceCpiLinked && (
+                <div style={s.cpiInfoBox}>
+                  ℹ️ ההחזר החודשי המשוער (₪{fmt(baseTotalWithExtras)}) עולה על 40% מההכנסה הפנויה שהזנת (₪{fmt(disposableIncomeParsed)}).
+                  התמהיל הותאם אוטומטית למסלולים <strong>צמודי מדד בלבד</strong> — קבועה צמודה ו/או משתנה צמודה.
+                </div>
+              )}
+
               <div style={s.summaryBar}>
                 <div style={s.summaryBarFill}>
                   {mixDetails.map(({ track, pct }, i) => (
@@ -545,9 +587,17 @@ export default function Home() {
                 </div>
                 {paymentToIncome !== null && (
                   <div style={s.totalRow}>
-                    <span>יחס החזר להכנסה</span>
+                    <span>יחס החזר להכנסה נטו</span>
                     <span style={{ fontWeight: "700", color: affordabilityOk ? "#38a169" : "#e53e3e" }}>
                       {paymentToIncome.toFixed(1)}% {affordabilityOk ? "✓ תקין" : "⚠️ גבוה מ-40%"}
+                    </span>
+                  </div>
+                )}
+                {disposablePaymentRatio !== null && (
+                  <div style={s.totalRow}>
+                    <span>יחס החזר להכנסה פנויה</span>
+                    <span style={{ fontWeight: "700", color: disposablePaymentRatio <= 40 ? "#38a169" : "#e53e3e" }}>
+                      {disposablePaymentRatio.toFixed(1)}% {disposablePaymentRatio <= 40 ? "✓ תקין" : "⚠️ גבוה מ-40%"}
                     </span>
                   </div>
                 )}
@@ -660,6 +710,7 @@ const s = {
   statusBtn: { padding: "12px", border: "2px solid", borderRadius: "10px", fontSize: "15px", cursor: "pointer", transition: "all 0.15s", background: "none" },
 
   errorBox: { marginTop: "16px", padding: "12px 16px", backgroundColor: "#fff5f5", border: "1px solid #fc8181", borderRadius: "8px", color: "#c53030", fontSize: "13px" },
+  cpiInfoBox: { marginBottom: "16px", padding: "12px 16px", backgroundColor: "#faf5ff", border: "1px solid #b794f4", borderRadius: "8px", color: "#553c9a", fontSize: "13px", lineHeight: "1.6" },
 
   goalsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" },
   goalCard: { padding: "18px 14px", border: "2px solid", borderRadius: "12px", cursor: "pointer", textAlign: "center", transition: "all 0.15s", background: "none" },
