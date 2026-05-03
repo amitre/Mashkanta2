@@ -472,6 +472,14 @@ export default function Home() {
               </div>
             )}
 
+            {/* CPI notice — shown above banks when constraint is active */}
+            {forceCpiLinked && (
+              <div style={{ ...s.cpiInfoBox, marginBottom: "16px" }}>
+                ℹ️ ההחזר החודשי המשוער בתמהיל רגיל (₪{fmt(Math.round(baseTotalWithExtras))}) עולה על 40% מההכנסה הפנויה שהזנת (₪{fmt(disposableIncomeParsed)}).
+                התמהיל הותאם אוטומטית ל<strong>מסלולים צמודי מדד בלבד</strong> — קבועה צמודה ו/או משתנה צמודה.
+              </div>
+            )}
+
             {/* Top 3 banks */}
             {top3.length > 0 && (
               <div style={s.card}>
@@ -493,9 +501,18 @@ export default function Home() {
                     <div style={{ flex: 1 }}>
                       <div style={s.bankName}>{bank.name}</div>
                       <div style={s.bankRates}>
-                        פריים {ratesInfo?.primeRate != null ? (effectivePrimeRate(ratesInfo.primeRate, primePct) * 100).toFixed(2) : (bank.prime * 100).toFixed(2)}% &nbsp;|&nbsp;
-                        קבועה לא צמודה {(bank.fixed_unlinked * 100).toFixed(2)}% &nbsp;|&nbsp;
-                        קבועה צמודה {(bank.fixed_cpi * 100).toFixed(2)}%
+                        {forceCpiLinked ? (
+                          <>
+                            קבועה צמודה {(bank.fixed_cpi * 100).toFixed(2)}% &nbsp;|&nbsp;
+                            משתנה צמודה {((bank.variable_cpi || 0.028) * 100).toFixed(2)}%
+                          </>
+                        ) : (
+                          <>
+                            פריים {ratesInfo?.primeRate != null ? (effectivePrimeRate(ratesInfo.primeRate, primePct) * 100).toFixed(2) : (bank.prime * 100).toFixed(2)}% &nbsp;|&nbsp;
+                            קבועה לא צמודה {(bank.fixed_unlinked * 100).toFixed(2)}% &nbsp;|&nbsp;
+                            קבועה צמודה {(bank.fixed_cpi * 100).toFixed(2)}%
+                          </>
+                        )}
                       </div>
                     </div>
                     <div style={{ textAlign: "left" }}>
@@ -512,14 +529,9 @@ export default function Home() {
               <h2 style={s.cardTitle}>
                 התמהיל המומלץ{bestBank ? ` — ${bestBank.name}` : ""}
               </h2>
-              <p style={s.cardSub}>פילוח המסלולים בהתאם לעדפות שלך</p>
-
-              {forceCpiLinked && (
-                <div style={s.cpiInfoBox}>
-                  ℹ️ ההחזר החודשי המשוער (₪{fmt(baseTotalWithExtras)}) עולה על 40% מההכנסה הפנויה שהזנת (₪{fmt(disposableIncomeParsed)}).
-                  התמהיל הותאם אוטומטית למסלולים <strong>צמודי מדד בלבד</strong> — קבועה צמודה ו/או משתנה צמודה.
-                </div>
-              )}
+              <p style={s.cardSub}>
+                {forceCpiLinked ? "מסלולים צמודי מדד בלבד — עקב הגבלת הכנסה פנויה" : "פילוח המסלולים בהתאם לעדפות שלך"}
+              </p>
 
               <div style={s.summaryBar}>
                 <div style={s.summaryBarFill}>
