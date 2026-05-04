@@ -1,291 +1,291 @@
 {
-  "updatedAt": "2026-04-27T08:09:27.587Z",
-  "surveyDate": "ינואר 2026",
-  "boiRate": 0.04,
-  "primeRate": 0.055,
-  "boiRateDate": "27.4.2026",
-  "nextDecision": "25/05/2026",
+  "updatedAt": "2026-05-04T08:21:16.142Z",
+  "surveyDate": "מרץ 2026",
+  "boiRate": null,
+  "primeRate": null,
+  "boiRateDate": null,
+  "nextDecision": null,
   "byYears": {
     "5": [
       {
         "name": "בנק הפועלים",
-        "prime": 0.0483,
-        "fixed_cpi": 0.027999999999999997,
-        "fixed_unlinked": 0.045,
-        "variable_cpi": 0.0291,
-        "variable_cpi_1yr": 0.0245,
-        "variable_unlinked": 0.0454
+        "prime": 0.056,
+        "fixed_cpi": 0.0285,
+        "fixed_unlinked": 0.044500000000000005,
+        "variable_cpi": 0.0294,
+        "variable_cpi_1yr": 0.024399999999999998,
+        "variable_unlinked": 0.044500000000000005
       },
       {
         "name": "בנק לאומי",
-        "prime": 0.0482,
-        "fixed_cpi": 0.0268,
-        "fixed_unlinked": 0.044500000000000005,
-        "variable_cpi": 0.032,
-        "variable_cpi_1yr": 0.0241,
-        "variable_unlinked": 0.045
+        "prime": 0.056,
+        "fixed_cpi": 0.027000000000000003,
+        "fixed_unlinked": 0.0438,
+        "variable_cpi": 0.0315,
+        "variable_cpi_1yr": 0.024,
+        "variable_unlinked": 0.044199999999999996
       },
       {
         "name": "הבנק הבינלאומי",
-        "prime": 0.0443,
+        "prime": 0.056,
         "fixed_cpi": 0.026099999999999998,
-        "fixed_unlinked": 0.044000000000000004,
+        "fixed_unlinked": 0.043899999999999995,
         "variable_cpi": 0.0285,
         "variable_cpi_1yr": 0.0239,
         "variable_unlinked": 0.0444
       },
       {
-        "name": "בנק דיסקונט",
-        "prime": 0.0496,
-        "fixed_cpi": 0.0242,
-        "fixed_unlinked": 0.0443,
-        "variable_cpi": 0.0268,
-        "variable_cpi_1yr": 0.025,
-        "variable_unlinked": 0.0443
+        "name": "בנק מזרחי-טפחות",
+        "prime": 0.056,
+        "fixed_cpi": 0.020099999999999996,
+        "fixed_unlinked": 0.0466,
+        "variable_cpi": 0.0349,
+        "variable_cpi_1yr": 0.0258,
+        "variable_unlinked": 0.045
       },
       {
-        "name": "בנק מזרחי-טפחות",
-        "prime": 0.0504,
-        "fixed_cpi": 0.0294,
-        "fixed_unlinked": 0.04650000000000001,
-        "variable_cpi": 0.0356,
-        "variable_cpi_1yr": 0.026000000000000002,
-        "variable_unlinked": 0.045
+        "name": "בנק דיסקונט",
+        "prime": 0.056,
+        "fixed_cpi": 0.024,
+        "fixed_unlinked": 0.0432,
+        "variable_cpi": 0.026699999999999998,
+        "variable_cpi_1yr": 0.024900000000000002,
+        "variable_unlinked": 0.043
       }
     ],
     "10": [
       {
         "name": "בנק הפועלים",
-        "prime": 0.0483,
-        "fixed_cpi": 0.028999999999999998,
-        "fixed_unlinked": 0.046,
-        "variable_cpi": 0.0291,
-        "variable_cpi_1yr": 0.0245,
-        "variable_unlinked": 0.0454
+        "prime": 0.056,
+        "fixed_cpi": 0.029500000000000002,
+        "fixed_unlinked": 0.0455,
+        "variable_cpi": 0.0294,
+        "variable_cpi_1yr": 0.024399999999999998,
+        "variable_unlinked": 0.044500000000000005
       },
       {
         "name": "בנק לאומי",
-        "prime": 0.0482,
-        "fixed_cpi": 0.0278,
-        "fixed_unlinked": 0.0455,
-        "variable_cpi": 0.032,
-        "variable_cpi_1yr": 0.0241,
-        "variable_unlinked": 0.045
+        "prime": 0.056,
+        "fixed_cpi": 0.027999999999999997,
+        "fixed_unlinked": 0.044800000000000006,
+        "variable_cpi": 0.0315,
+        "variable_cpi_1yr": 0.024,
+        "variable_unlinked": 0.044199999999999996
       },
       {
         "name": "הבנק הבינלאומי",
-        "prime": 0.0443,
+        "prime": 0.056,
         "fixed_cpi": 0.0271,
-        "fixed_unlinked": 0.045,
+        "fixed_unlinked": 0.0449,
         "variable_cpi": 0.0285,
         "variable_cpi_1yr": 0.0239,
         "variable_unlinked": 0.0444
       },
       {
-        "name": "בנק דיסקונט",
-        "prime": 0.0496,
-        "fixed_cpi": 0.0252,
-        "fixed_unlinked": 0.0453,
-        "variable_cpi": 0.0268,
-        "variable_cpi_1yr": 0.025,
-        "variable_unlinked": 0.0443
+        "name": "בנק מזרחי-טפחות",
+        "prime": 0.056,
+        "fixed_cpi": 0.0301,
+        "fixed_unlinked": 0.047599999999999996,
+        "variable_cpi": 0.0349,
+        "variable_cpi_1yr": 0.0258,
+        "variable_unlinked": 0.045
       },
       {
-        "name": "בנק מזרחי-טפחות",
-        "prime": 0.0504,
-        "fixed_cpi": 0.0304,
-        "fixed_unlinked": 0.0475,
-        "variable_cpi": 0.0356,
-        "variable_cpi_1yr": 0.026000000000000002,
-        "variable_unlinked": 0.045
+        "name": "בנק דיסקונט",
+        "prime": 0.056,
+        "fixed_cpi": 0.025,
+        "fixed_unlinked": 0.044199999999999996,
+        "variable_cpi": 0.026699999999999998,
+        "variable_cpi_1yr": 0.024900000000000002,
+        "variable_unlinked": 0.043
       }
     ],
     "15": [
       {
         "name": "בנק הפועלים",
-        "prime": 0.0483,
-        "fixed_cpi": 0.03,
-        "fixed_unlinked": 0.047,
-        "variable_cpi": 0.0291,
-        "variable_cpi_1yr": 0.0245,
-        "variable_unlinked": 0.0454
+        "prime": 0.056,
+        "fixed_cpi": 0.0305,
+        "fixed_unlinked": 0.04650000000000001,
+        "variable_cpi": 0.0294,
+        "variable_cpi_1yr": 0.024399999999999998,
+        "variable_unlinked": 0.044500000000000005
       },
       {
         "name": "בנק לאומי",
-        "prime": 0.0482,
-        "fixed_cpi": 0.0288,
-        "fixed_unlinked": 0.04650000000000001,
-        "variable_cpi": 0.032,
-        "variable_cpi_1yr": 0.0241,
-        "variable_unlinked": 0.045
+        "prime": 0.056,
+        "fixed_cpi": 0.028999999999999998,
+        "fixed_unlinked": 0.0458,
+        "variable_cpi": 0.0315,
+        "variable_cpi_1yr": 0.024,
+        "variable_unlinked": 0.044199999999999996
       },
       {
         "name": "הבנק הבינלאומי",
-        "prime": 0.0443,
+        "prime": 0.056,
         "fixed_cpi": 0.0281,
-        "fixed_unlinked": 0.046,
+        "fixed_unlinked": 0.045899999999999996,
         "variable_cpi": 0.0285,
         "variable_cpi_1yr": 0.0239,
         "variable_unlinked": 0.0444
       },
       {
-        "name": "בנק דיסקונט",
-        "prime": 0.0496,
-        "fixed_cpi": 0.0262,
-        "fixed_unlinked": 0.0463,
-        "variable_cpi": 0.0268,
-        "variable_cpi_1yr": 0.025,
-        "variable_unlinked": 0.0443
+        "name": "בנק מזרחי-טפחות",
+        "prime": 0.056,
+        "fixed_cpi": 0.0311,
+        "fixed_unlinked": 0.048600000000000004,
+        "variable_cpi": 0.0349,
+        "variable_cpi_1yr": 0.0258,
+        "variable_unlinked": 0.045
       },
       {
-        "name": "בנק מזרחי-טפחות",
-        "prime": 0.0504,
-        "fixed_cpi": 0.031400000000000004,
-        "fixed_unlinked": 0.048499999999999995,
-        "variable_cpi": 0.0356,
-        "variable_cpi_1yr": 0.026000000000000002,
-        "variable_unlinked": 0.045
+        "name": "בנק דיסקונט",
+        "prime": 0.056,
+        "fixed_cpi": 0.026000000000000002,
+        "fixed_unlinked": 0.0452,
+        "variable_cpi": 0.026699999999999998,
+        "variable_cpi_1yr": 0.024900000000000002,
+        "variable_unlinked": 0.043
       }
     ],
     "20": [
       {
         "name": "בנק הפועלים",
-        "prime": 0.0483,
-        "fixed_cpi": 0.031,
-        "fixed_unlinked": 0.048,
-        "variable_cpi": 0.0291,
-        "variable_cpi_1yr": 0.0245,
-        "variable_unlinked": 0.0454
+        "prime": 0.056,
+        "fixed_cpi": 0.0315,
+        "fixed_unlinked": 0.0475,
+        "variable_cpi": 0.0294,
+        "variable_cpi_1yr": 0.024399999999999998,
+        "variable_unlinked": 0.044500000000000005
       },
       {
         "name": "בנק לאומי",
-        "prime": 0.0482,
-        "fixed_cpi": 0.0298,
-        "fixed_unlinked": 0.0475,
-        "variable_cpi": 0.032,
-        "variable_cpi_1yr": 0.0241,
-        "variable_unlinked": 0.045
+        "prime": 0.056,
+        "fixed_cpi": 0.03,
+        "fixed_unlinked": 0.046799999999999994,
+        "variable_cpi": 0.0315,
+        "variable_cpi_1yr": 0.024,
+        "variable_unlinked": 0.044199999999999996
       },
       {
         "name": "הבנק הבינלאומי",
-        "prime": 0.0443,
+        "prime": 0.056,
         "fixed_cpi": 0.0291,
-        "fixed_unlinked": 0.047,
+        "fixed_unlinked": 0.046900000000000004,
         "variable_cpi": 0.0285,
         "variable_cpi_1yr": 0.0239,
         "variable_unlinked": 0.0444
       },
       {
-        "name": "בנק דיסקונט",
-        "prime": 0.0496,
-        "fixed_cpi": 0.027200000000000002,
-        "fixed_unlinked": 0.0473,
-        "variable_cpi": 0.0268,
-        "variable_cpi_1yr": 0.025,
-        "variable_unlinked": 0.0443
+        "name": "בנק מזרחי-טפחות",
+        "prime": 0.056,
+        "fixed_cpi": 0.0321,
+        "fixed_unlinked": 0.0496,
+        "variable_cpi": 0.0349,
+        "variable_cpi_1yr": 0.0258,
+        "variable_unlinked": 0.045
       },
       {
-        "name": "בנק מזרחי-טפחות",
-        "prime": 0.0504,
-        "fixed_cpi": 0.032400000000000005,
-        "fixed_unlinked": 0.0495,
-        "variable_cpi": 0.0356,
-        "variable_cpi_1yr": 0.026000000000000002,
-        "variable_unlinked": 0.045
+        "name": "בנק דיסקונט",
+        "prime": 0.056,
+        "fixed_cpi": 0.027000000000000003,
+        "fixed_unlinked": 0.0462,
+        "variable_cpi": 0.026699999999999998,
+        "variable_cpi_1yr": 0.024900000000000002,
+        "variable_unlinked": 0.043
       }
     ],
     "25": [
       {
         "name": "בנק הפועלים",
-        "prime": 0.0483,
-        "fixed_cpi": 0.032,
-        "fixed_unlinked": 0.049,
-        "variable_cpi": 0.0291,
-        "variable_cpi_1yr": 0.0245,
-        "variable_unlinked": 0.0454
+        "prime": 0.056,
+        "fixed_cpi": 0.0325,
+        "fixed_unlinked": 0.048499999999999995,
+        "variable_cpi": 0.0294,
+        "variable_cpi_1yr": 0.024399999999999998,
+        "variable_unlinked": 0.044500000000000005
       },
       {
         "name": "בנק לאומי",
-        "prime": 0.0482,
-        "fixed_cpi": 0.0308,
-        "fixed_unlinked": 0.048499999999999995,
-        "variable_cpi": 0.032,
-        "variable_cpi_1yr": 0.0241,
-        "variable_unlinked": 0.045
+        "prime": 0.056,
+        "fixed_cpi": 0.031,
+        "fixed_unlinked": 0.0478,
+        "variable_cpi": 0.0315,
+        "variable_cpi_1yr": 0.024,
+        "variable_unlinked": 0.044199999999999996
       },
       {
         "name": "הבנק הבינלאומי",
-        "prime": 0.0443,
+        "prime": 0.056,
         "fixed_cpi": 0.0301,
-        "fixed_unlinked": 0.048,
+        "fixed_unlinked": 0.0479,
         "variable_cpi": 0.0285,
         "variable_cpi_1yr": 0.0239,
         "variable_unlinked": 0.0444
       },
       {
-        "name": "בנק דיסקונט",
-        "prime": 0.0496,
-        "fixed_cpi": 0.0282,
-        "fixed_unlinked": 0.0483,
-        "variable_cpi": 0.0268,
-        "variable_cpi_1yr": 0.025,
-        "variable_unlinked": 0.0443
+        "name": "בנק מזרחי-טפחות",
+        "prime": 0.056,
+        "fixed_cpi": 0.0331,
+        "fixed_unlinked": 0.0506,
+        "variable_cpi": 0.0349,
+        "variable_cpi_1yr": 0.0258,
+        "variable_unlinked": 0.045
       },
       {
-        "name": "בנק מזרחי-טפחות",
-        "prime": 0.0504,
-        "fixed_cpi": 0.0334,
-        "fixed_unlinked": 0.050499999999999996,
-        "variable_cpi": 0.0356,
-        "variable_cpi_1yr": 0.026000000000000002,
-        "variable_unlinked": 0.045
+        "name": "בנק דיסקונט",
+        "prime": 0.056,
+        "fixed_cpi": 0.027999999999999997,
+        "fixed_unlinked": 0.0472,
+        "variable_cpi": 0.026699999999999998,
+        "variable_cpi_1yr": 0.024900000000000002,
+        "variable_unlinked": 0.043
       }
     ],
     "30": [
       {
         "name": "בנק הפועלים",
-        "prime": 0.0483,
-        "fixed_cpi": 0.033,
-        "fixed_unlinked": 0.05,
-        "variable_cpi": 0.0291,
-        "variable_cpi_1yr": 0.0245,
-        "variable_unlinked": 0.0454
+        "prime": 0.056,
+        "fixed_cpi": 0.0335,
+        "fixed_unlinked": 0.0495,
+        "variable_cpi": 0.0294,
+        "variable_cpi_1yr": 0.024399999999999998,
+        "variable_unlinked": 0.044500000000000005
       },
       {
         "name": "בנק לאומי",
-        "prime": 0.0482,
-        "fixed_cpi": 0.0318,
-        "fixed_unlinked": 0.0495,
-        "variable_cpi": 0.032,
-        "variable_cpi_1yr": 0.0241,
-        "variable_unlinked": 0.045
+        "prime": 0.056,
+        "fixed_cpi": 0.032,
+        "fixed_unlinked": 0.048799999999999996,
+        "variable_cpi": 0.0315,
+        "variable_cpi_1yr": 0.024,
+        "variable_unlinked": 0.044199999999999996
       },
       {
         "name": "הבנק הבינלאומי",
-        "prime": 0.0443,
+        "prime": 0.056,
         "fixed_cpi": 0.0311,
-        "fixed_unlinked": 0.049,
+        "fixed_unlinked": 0.0489,
         "variable_cpi": 0.0285,
         "variable_cpi_1yr": 0.0239,
         "variable_unlinked": 0.0444
       },
       {
-        "name": "בנק דיסקונט",
-        "prime": 0.0496,
-        "fixed_cpi": 0.0292,
-        "fixed_unlinked": 0.0493,
-        "variable_cpi": 0.0268,
-        "variable_cpi_1yr": 0.025,
-        "variable_unlinked": 0.0443
+        "name": "בנק מזרחי-טפחות",
+        "prime": 0.056,
+        "fixed_cpi": 0.0341,
+        "fixed_unlinked": 0.0516,
+        "variable_cpi": 0.0349,
+        "variable_cpi_1yr": 0.0258,
+        "variable_unlinked": 0.045
       },
       {
-        "name": "בנק מזרחי-טפחות",
-        "prime": 0.0504,
-        "fixed_cpi": 0.0344,
-        "fixed_unlinked": 0.051500000000000004,
-        "variable_cpi": 0.0356,
-        "variable_cpi_1yr": 0.026000000000000002,
-        "variable_unlinked": 0.045
+        "name": "בנק דיסקונט",
+        "prime": 0.056,
+        "fixed_cpi": 0.028999999999999998,
+        "fixed_unlinked": 0.0482,
+        "variable_cpi": 0.026699999999999998,
+        "variable_cpi_1yr": 0.024900000000000002,
+        "variable_unlinked": 0.043
       }
     ]
   }
