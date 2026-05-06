@@ -147,9 +147,9 @@ export default function Home() {
   }, 0);
   const baseTotalWithExtras = baseTotalMonthly + monthlyInsurance;
 
-  // CPI-only constraint: החזר > 40% מהכנסה פנויה (= 40% מהכנסה נטו) → כל המסלולים צמודי מדד
-  const disposableIncomeParsed = (parseFloat(income) || 0) * 0.4;
-  const forceCpiLinked = disposableIncomeParsed > 0 && baseTotalWithExtras > disposableIncomeParsed * 0.4;
+  // CPI-only constraint: החזר > הכנסה פנויה → כל המסלולים צמודי מדד
+  const disposableIncomeParsed = totalIncome * 0.4;
+  const forceCpiLinked = disposableIncomeParsed > 0 && baseTotalWithExtras > disposableIncomeParsed;
 
   // Effective mix
   const mix = forceCpiLinked ? convertToCpiLinked(baseMix) : baseMix;
@@ -469,7 +469,7 @@ export default function Home() {
             {/* CPI notice — shown above banks when constraint is active */}
             {forceCpiLinked && (
               <div style={{ ...s.cpiInfoBox, marginBottom: "16px" }}>
-                ℹ️ ההחזר החודשי המשוער בתמהיל רגיל (₪{fmt(Math.round(baseTotalWithExtras))}) עולה על 40% מההכנסה הפנויה (₪{fmt(Math.round(disposableIncomeParsed))} — 40% מהכנסה נטו).
+                ℹ️ ההחזר החודשי המשוער בתמהיל רגיל (₪{fmt(Math.round(baseTotalWithExtras))}) עולה על ההכנסה הפנויה (₪{fmt(Math.round(disposableIncomeParsed))}).
                 התמהיל הותאם אוטומטית ל<strong>מסלולים צמודי מדד בלבד</strong> — קבועה צמודה ו/או משתנה צמודה.
               </div>
             )}
@@ -601,9 +601,9 @@ export default function Home() {
                 )}
                 {disposablePaymentRatio !== null && (
                   <div style={s.totalRow}>
-                    <span>יחס החזר להכנסה פנויה</span>
-                    <span style={{ fontWeight: "700", color: disposablePaymentRatio <= 40 ? "#38a169" : "#e53e3e" }}>
-                      {disposablePaymentRatio.toFixed(1)}% {disposablePaymentRatio <= 40 ? "✓ תקין" : "⚠️ גבוה מ-40%"}
+                    <span>יחס החזר להכנסה פנויה (₪{fmt(Math.round(disposableIncomeParsed))})</span>
+                    <span style={{ fontWeight: "700", color: disposablePaymentRatio <= 100 ? "#38a169" : "#e53e3e" }}>
+                      {disposablePaymentRatio.toFixed(1)}% {disposablePaymentRatio <= 100 ? "✓ תקין" : "⚠️ עולה על ההכנסה הפנויה"}
                     </span>
                   </div>
                 )}
@@ -615,7 +615,7 @@ export default function Home() {
 
               {!affordabilityOk && (
                 <div style={s.errorBox}>
-                  ⚠️ ההחזר החודשי גבוה ביחס להכנסה. מומלץ להגדיל הון עצמי, להאריך את התקופה, או לפנות ליועץ משכנתאות.
+                  🚫 ההחזר החודשי (₪{fmt(Math.round(totalWithExtras))}) עולה על ההכנסה הפנויה (₪{fmt(Math.round(disposableIncomeParsed))}) — הבנק לא יאשר משכנתא זו. יש להגדיל הון עצמי, להאריך את התקופה, או להגדיל את ההכנסה.
                 </div>
               )}
             </div>
