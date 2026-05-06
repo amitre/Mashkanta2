@@ -48,7 +48,6 @@ export default function Home() {
 
   // Step 3
   const [income, setIncome] = useState("15000");
-  const [disposableIncome, setDisposableIncome] = useState("");
   const [borrowers, setBorrowers] = useState("1");
   const [years, setYears] = useState("25");
 
@@ -66,7 +65,6 @@ export default function Home() {
         if (d.apartmentStatus) setApartmentStatus(d.apartmentStatus);
         if (d.goals?.length) setGoals(d.goals);
         if (d.income) setIncome(d.income);
-        if (d.disposableIncome) setDisposableIncome(d.disposableIncome);
         if (d.borrowers) setBorrowers(d.borrowers);
         if (d.years) setYears(d.years);
         if (d.step && d.step < 4) setStep(d.step);
@@ -78,10 +76,10 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem("wizard_state", JSON.stringify({
-        propertyValue, equity, apartmentStatus, goals, income, disposableIncome, borrowers, years, step,
+        propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step,
       }));
     } catch {}
-  }, [propertyValue, equity, apartmentStatus, goals, income, disposableIncome, borrowers, years, step]);
+  }, [propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step]);
 
   const loanAmount =
     parseFloat(propertyValue) && parseFloat(equity)
@@ -149,8 +147,8 @@ export default function Home() {
   }, 0);
   const baseTotalWithExtras = baseTotalMonthly + monthlyInsurance;
 
-  // CPI-only constraint: החזר > 40% מהכנסה פנויה → כל המסלולים צמודי מדד
-  const disposableIncomeParsed = parseFloat(disposableIncome) || 0;
+  // CPI-only constraint: החזר > 40% מהכנסה פנויה (= 40% מהכנסה נטו) → כל המסלולים צמודי מדד
+  const disposableIncomeParsed = (parseFloat(income) || 0) * 0.4;
   const forceCpiLinked = disposableIncomeParsed > 0 && baseTotalWithExtras > disposableIncomeParsed * 0.4;
 
   // Effective mix
@@ -346,10 +344,6 @@ export default function Home() {
 
             <div style={s.fieldGroup}>
               <Field label="הכנסה חודשית נטו (₪)" placeholder="לדוגמה: 15,000" value={income} onChange={setIncome} />
-              <Field label="הכנסה פנויה (₪)" placeholder="לדוגמה: 8,000" value={disposableIncome} onChange={setDisposableIncome} />
-            </div>
-            <div style={{ fontSize: "12px", color: "#718096", marginTop: "4px", marginBottom: "16px" }}>
-              הכנסה פנויה = מה שנשאר לאחר ניכוי הוצאות קבועות (שכ"ד, מזון, תחבורה וכד׳). קובעת את סוג המסלולים בתמהיל.
             </div>
             <div style={s.fieldGroup}>
               <div style={s.field}>
@@ -475,7 +469,7 @@ export default function Home() {
             {/* CPI notice — shown above banks when constraint is active */}
             {forceCpiLinked && (
               <div style={{ ...s.cpiInfoBox, marginBottom: "16px" }}>
-                ℹ️ ההחזר החודשי המשוער בתמהיל רגיל (₪{fmt(Math.round(baseTotalWithExtras))}) עולה על 40% מההכנסה הפנויה שהזנת (₪{fmt(disposableIncomeParsed)}).
+                ℹ️ ההחזר החודשי המשוער בתמהיל רגיל (₪{fmt(Math.round(baseTotalWithExtras))}) עולה על 40% מההכנסה הפנויה (₪{fmt(Math.round(disposableIncomeParsed))} — 40% מהכנסה נטו).
                 התמהיל הותאם אוטומטית ל<strong>מסלולים צמודי מדד בלבד</strong> — קבועה צמודה ו/או משתנה צמודה.
               </div>
             )}
