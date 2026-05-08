@@ -5,24 +5,23 @@
 - **Branch ראשי:** `main`
 
 ## הגדרת GitHub בתחילת סשן
-כאשר המשתמש נותן טוקן, הגדר אותו כך:
+הטוקן שמור ב-`.github-token` (gitignored). לדחיפה ל-main:
+
 ```bash
-git remote set-url origin "https://amitre:TOKEN@github.com/amitre/Mashkanta2.git"
-```
-החלף `TOKEN` בטוקן שניתן. לאחר כל push, החזר את ה-remote לכתובת המקורית:
-```bash
-git remote set-url origin "http://local_proxy@127.0.0.1:37579/git/amitre/Mashkanta2"
+TOKEN=$(cat .github-token)
+git remote set-url origin "https://amitre:${TOKEN}@github.com/amitre/Mashkanta2.git"
+git pull origin main --rebase
+git push origin HEAD:main
+git remote set-url origin "http://local_proxy@127.0.0.1:39521/git/amitre/Mashkanta2"
 ```
 
 ## דחיפה ל-main — חובה בכל שינוי
 **כל שינוי שמבוצע חייב להידחף גם ל-`main` כדי שVercel יקלוט אותו ויעשה deploy.**
 
-```bash
-git remote set-url origin "https://amitre:TOKEN@github.com/amitre/Mashkanta2.git"
-git pull origin main --rebase   # למנוע conflicts
-git push origin HEAD:main
-git remote set-url origin "http://local_proxy@127.0.0.1:37579/git/amitre/Mashkanta2"
-```
+סדר הפעולות בכל סשן:
+1. commit לbranch הפיתוח (`claude/...`)
+2. push לbranch הפיתוח
+3. push ל-`main` (לפי הפקודות למעלה) — זה מה שמפעיל את הdeploy ב-Vercel
 
 סדר הפעולות בכל סשן:
 1. commit לbranch הפיתוח (`claude/...`)
