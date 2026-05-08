@@ -185,7 +185,7 @@ export default function Home() {
   const totalMonthly = mixDetails.reduce((s, d) => s + d.monthly, 0);
   const totalWithExtras = totalMonthly + monthlyInsurance;
   // One-time opening fee estimate
-  const openingFee = loan > 0 ? Math.round(Math.min(Math.max(loan * 0.002, 3600), 7500)) : 0;
+  const openingFee = loan > 0 ? Math.round(Math.min(Math.max(loan * 0.0002, 360), 750)) : 0;
   const paymentToIncome = totalIncome > 0 ? (totalWithExtras / totalIncome) * 100 : null;
   const affordabilityOk = paymentToIncome ? paymentToIncome <= 40 : true;
   const disposablePaymentRatio = disposableIncomeParsed > 0 ? (totalWithExtras / disposableIncomeParsed) * 100 : null;
