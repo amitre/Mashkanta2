@@ -50,6 +50,7 @@ export default function Home() {
   const [income, setIncome] = useState("15000");
   const [borrowers, setBorrowers] = useState("1");
   const [years, setYears] = useState("25");
+  const [simYears, setSimYears] = useState(25);
 
   // Rates data
   const [ratesInfo, setRatesInfo] = useState(null); // { banks, live, source, date }
@@ -80,6 +81,11 @@ export default function Home() {
       }));
     } catch {}
   }, [propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step]);
+
+  // Sync simulation years when entering results step
+  useEffect(() => {
+    if (step === 4) setSimYears(parseInt(years) || 25);
+  }, [step]);
 
   const loanAmount =
     parseFloat(propertyValue) && parseFloat(equity)
@@ -183,6 +189,48 @@ export default function Home() {
   const paymentToIncome = totalIncome > 0 ? (totalWithExtras / totalIncome) * 100 : null;
   const affordabilityOk = paymentToIncome ? paymentToIncome <= 40 : true;
   const disposablePaymentRatio = disposableIncomeParsed > 0 ? (totalWithExtras / disposableIncomeParsed) * 100 : null;
+
+  // Simulation helpers — recalculate totals for any year count
+  function calcTotalForYears(y) {
+    return mix.reduce((s, { track, pct }) => {
+      let rate;
+      if (track === "prime" && ratesInfo?.primeRate != null) {
+        rate = effectivePrimeRate(ratesInfo.primeRate, primePct);
+      } else {
+        rate = bestBank ? (bestBank[track] || 0.06) : 0.06;
+      }
+      return s + calcMonthly((loan * pct) / 100, rate, y);
+    }, 0);
+  }
+
+  function solveYearsForMonthly(targetMonthly) {
+    let lo = 1, hi = 40;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (calcTotalForYears(mid) > targetMonthly) lo = mid;
+      else hi = mid;
+    }
+    return Math.min(30, Math.max(5, Math.round((lo + hi) / 2)));
+  }
+
+  const simMixDetails = mix.map(({ track, pct }) => {
+    let rate;
+    if (track === "prime" && ratesInfo?.primeRate != null) {
+      rate = effectivePrimeRate(ratesInfo.primeRate, primePct);
+    } else {
+      rate = bestBank ? (bestBank[track] || 0.06) : 0.06;
+    }
+    const portion = (loan * pct) / 100;
+    const monthly = calcMonthly(portion, rate, simYears);
+    return { track, pct, portion, monthly, rate };
+  });
+  const simTotalMonthly = simMixDetails.reduce((s, d) => s + d.monthly, 0);
+  const simTotalWithExtras = simTotalMonthly + monthlyInsurance;
+  const simPaymentToIncome = totalIncome > 0 ? (simTotalWithExtras / totalIncome) * 100 : null;
+  const simAffordabilityOk = simPaymentToIncome ? simPaymentToIncome <= 40 : true;
+  const simDisposablePaymentRatio = disposableIncomeParsed > 0 ? (simTotalWithExtras / disposableIncomeParsed) * 100 : null;
+  const minMonthly = loan > 0 ? Math.floor(calcTotalForYears(30) / 50) * 50 : 1000;
+  const maxMonthly = loan > 0 ? Math.ceil(calcTotalForYears(5) / 50) * 50 : 50000;
 
   return (
     <div dir="rtl" style={s.page}>
@@ -544,7 +592,7 @@ export default function Home() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", margin: "20px 0" }}>
-                {mixDetails.map(({ track, pct, portion, monthly, rate }) => {
+                {simMixDetails.map(({ track, pct, portion, monthly, rate }) => {
                   const t = TRACK_META[track];
                   return (
                     <div key={track} style={{ ...s.trackCard, borderColor: t.color }}>
@@ -574,10 +622,45 @@ export default function Home() {
                 })}
               </div>
 
+              {/* Sliders — years ↔ monthly payment */}
+              <div style={s.slidersBox}>
+                <div style={{ marginBottom: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={s.label}>תקופת הלוואה</span>
+                    <span style={{ fontWeight: "800", fontSize: "17px", color: "#2b6cb0" }}>{simYears} שנים</span>
+                  </div>
+                  <input
+                    type="range" min="5" max="30" step="1"
+                    value={simYears}
+                    onChange={(e) => setSimYears(parseInt(e.target.value))}
+                    style={s.slider}
+                  />
+                  <div style={s.sliderLabels}>
+                    <span>5 שנים</span><span>30 שנה</span>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={s.label}>החזר חודשי (משכנתא)</span>
+                    <span style={{ fontWeight: "800", fontSize: "17px", color: "#2b6cb0" }}>₪{fmt(simTotalMonthly)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={minMonthly} max={maxMonthly} step="50"
+                    value={Math.min(maxMonthly, Math.max(minMonthly, Math.round(simTotalMonthly / 50) * 50))}
+                    onChange={(e) => setSimYears(solveYearsForMonthly(parseInt(e.target.value)))}
+                    style={s.slider}
+                  />
+                  <div style={s.sliderLabels}>
+                    <span>₪{fmt(minMonthly)} (30 שנה)</span><span>₪{fmt(maxMonthly)} (5 שנים)</span>
+                  </div>
+                </div>
+              </div>
+
               <div style={s.totalBox}>
                 <div style={s.totalRow}>
                   <span>החזר משכנתא חודשי</span>
-                  <span style={{ fontSize: "20px", fontWeight: "800", color: "#2b6cb0" }}>₪{fmt(totalMonthly)}</span>
+                  <span style={{ fontSize: "20px", fontWeight: "800", color: "#2b6cb0" }}>₪{fmt(simTotalMonthly)}</span>
                 </div>
                 <div style={{ ...s.totalRow, color: "#718096", fontSize: "13px" }}>
                   <span>ביטוח חיים + מבנה (הערכה)</span>
@@ -585,37 +668,37 @@ export default function Home() {
                 </div>
                 <div style={{ ...s.totalRow, borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
                   <span style={{ fontWeight: "700" }}>סה"כ עלות חודשית משוערת</span>
-                  <span style={{ fontSize: "22px", fontWeight: "800", color: "#1a202c" }}>₪{fmt(totalWithExtras)}</span>
+                  <span style={{ fontSize: "22px", fontWeight: "800", color: "#1a202c" }}>₪{fmt(simTotalWithExtras)}</span>
                 </div>
                 <div style={{ ...s.totalRow, color: "#718096", fontSize: "13px" }}>
                   <span>עמלת פתיחת תיק (חד-פעמי)</span>
                   <span>~₪{fmt(openingFee)}</span>
                 </div>
-                {paymentToIncome !== null && (
+                {simPaymentToIncome !== null && (
                   <div style={s.totalRow}>
                     <span>יחס החזר להכנסה נטו</span>
-                    <span style={{ fontWeight: "700", color: affordabilityOk ? "#38a169" : "#e53e3e" }}>
-                      {paymentToIncome.toFixed(1)}% {affordabilityOk ? "✓ תקין" : "⚠️ גבוה מ-40%"}
+                    <span style={{ fontWeight: "700", color: simAffordabilityOk ? "#38a169" : "#e53e3e" }}>
+                      {simPaymentToIncome.toFixed(1)}% {simAffordabilityOk ? "✓ תקין" : "⚠️ גבוה מ-40%"}
                     </span>
                   </div>
                 )}
-                {disposablePaymentRatio !== null && (
+                {simDisposablePaymentRatio !== null && (
                   <div style={s.totalRow}>
                     <span>יחס החזר להכנסה פנויה (₪{fmt(Math.round(disposableIncomeParsed))})</span>
-                    <span style={{ fontWeight: "700", color: disposablePaymentRatio <= 100 ? "#38a169" : "#e53e3e" }}>
-                      {disposablePaymentRatio.toFixed(1)}% {disposablePaymentRatio <= 100 ? "✓ תקין" : "⚠️ עולה על ההכנסה הפנויה"}
+                    <span style={{ fontWeight: "700", color: simDisposablePaymentRatio <= 100 ? "#38a169" : "#e53e3e" }}>
+                      {simDisposablePaymentRatio.toFixed(1)}% {simDisposablePaymentRatio <= 100 ? "✓ תקין" : "⚠️ עולה על ההכנסה הפנויה"}
                     </span>
                   </div>
                 )}
                 <div style={s.totalRow}>
                   <span>תקופת הלוואה</span>
-                  <span style={{ fontWeight: "600" }}>{years} שנים</span>
+                  <span style={{ fontWeight: "600" }}>{simYears} שנים</span>
                 </div>
               </div>
 
-              {!affordabilityOk && (
+              {!simAffordabilityOk && (
                 <div style={s.errorBox}>
-                  🚫 ההחזר החודשי (₪{fmt(Math.round(totalWithExtras))}) עולה על ההכנסה הפנויה (₪{fmt(Math.round(disposableIncomeParsed))}) — הבנק לא יאשר משכנתא זו. יש להגדיל הון עצמי, להאריך את התקופה, או להגדיל את ההכנסה.
+                  🚫 ההחזר החודשי (₪{fmt(Math.round(simTotalWithExtras))}) עולה על ההכנסה הפנויה (₪{fmt(Math.round(disposableIncomeParsed))}) — הבנק לא יאשר משכנתא זו. יש להגדיל הון עצמי, להאריך את התקופה, או להגדיל את ההכנסה.
                 </div>
               )}
             </div>
@@ -827,6 +910,10 @@ const s = {
 
   totalBox: { backgroundColor: "#f7fafc", borderRadius: "12px", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px" },
   totalRow: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "15px", color: "#4a5568" },
+
+  slidersBox: { backgroundColor: "#ebf8ff", border: "1px solid #90cdf4", borderRadius: "12px", padding: "16px 20px", marginBottom: "12px" },
+  slider: { width: "100%", direction: "ltr", cursor: "pointer", accentColor: "#3182ce", display: "block" },
+  sliderLabels: { display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#a0aec0", direction: "ltr", marginTop: "3px" },
 
   spinner: {
     width: "52px", height: "52px", borderRadius: "50%",
