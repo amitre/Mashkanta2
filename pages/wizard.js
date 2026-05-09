@@ -15,11 +15,17 @@ const APARTMENT_STATUS = [
 ];
 
 const GOALS = [
-  { id: "low_monthly", label: "תשלום חודשי נמוך", sub: "לחץ פיננסי מינימלי עכשיו", icon: "💰", color: "#38a169", bg: "#f0fff4" },
-  { id: "low_total", label: "עלות כוללת נמוכה", sub: "פחות ריבית לאורך זמן", icon: "📉", color: "#e53e3e", bg: "#fff5f5" },
-  { id: "early_repay", label: "גמישות לפירעון מוקדם", sub: "עשוי להחזיר מוקדם", icon: "🔓", color: "#3182ce", bg: "#ebf8ff" },
-  { id: "stability", label: "יציבות ודאות", sub: "לא אוהב הפתעות בהחזר", icon: "🛡️", color: "#805ad5", bg: "#faf5ff" },
+  { id: "stability", label: "יציבות ודאות",      sub: "ריבית קבועה — ידוע מה משלמים כל חודש",          icon: "🛡️", color: "#805ad5", bg: "#faf5ff" },
+  { id: "balanced",  label: "תמהיל מאוזן",        sub: "שילוב סביר בין ודאות לחיסכון",                   icon: "⚖️", color: "#3182ce", bg: "#ebf8ff" },
+  { id: "flexible",  label: "גמישות מקסימלית",    sub: "צפוי להחזיר מוקדם, מוכן לסיכון ריבית",          icon: "🚀", color: "#38a169", bg: "#f0fff4" },
 ];
+
+const LEGACY_GOAL_MAP = {
+  low_monthly: "balanced",
+  low_total:   "balanced",
+  early_repay: "flexible",
+  stability:   "stability",
+};
 
 const TRACK_META = {
   prime:            { name: "פריים",             desc: "ריבית משתנה צמודה לריבית בנק ישראל",            color: "#3182ce", risk: "בינוני" },
@@ -44,7 +50,7 @@ export default function Home() {
   const [apartmentStatus, setApartmentStatus] = useState("first");
 
   // Step 2
-  const [goals, setGoals] = useState(["low_monthly"]);
+  const [goals, setGoals] = useState(["balanced"]);
 
   // Step 3
   const [income, setIncome] = useState("15000");
@@ -65,7 +71,11 @@ export default function Home() {
         if (d.propertyValue) setPropertyValue(d.propertyValue);
         if (d.equity) setEquity(d.equity);
         if (d.apartmentStatus) setApartmentStatus(d.apartmentStatus);
-        if (d.goals?.length) setGoals(d.goals);
+        if (d.goals?.length) {
+          const validIds = new Set(GOALS.map((g) => g.id));
+          const migrated = d.goals.map((g) => validIds.has(g) ? g : (LEGACY_GOAL_MAP[g] || "balanced"));
+          setGoals([migrated[0] || "balanced"]);
+        }
         if (d.income) setIncome(d.income);
         if (d.borrowers) setBorrowers(d.borrowers);
         if (d.preferredMonthly) setPreferredMonthly(d.preferredMonthly);
@@ -125,10 +135,8 @@ export default function Home() {
   const preferredMonthlyNum = parseFloat(preferredMonthly) || 0;
   const step3Valid = income && preferredMonthly && preferredMonthlyNum > 0;
 
-  function toggleGoal(id) {
-    setGoals((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
+  function selectGoal(id) {
+    setGoals([id]);
   }
 
   async function fetchRatesAndProceed() {
@@ -374,10 +382,10 @@ export default function Home() {
         {/* Step 2 – Goals */}
         {!loading && step === 2 && (
           <div style={s.card}>
-            <h2 style={s.cardTitle}>מה הכי חשוב לך?</h2>
-            <p style={s.cardSub}>ה-AI יבנה תמהיל שמתאים בדיוק למה שאתם מחפשים</p>
+            <h2 style={s.cardTitle}>מה הגישה שלך למשכנתא?</h2>
+            <p style={s.cardSub}>הבחירה תקבע את התמהיל ואת דירוג הבנקים</p>
 
-            <div style={s.goalsGrid}>
+            <div style={{ ...s.goalsGrid, gridTemplateColumns: "1fr 1fr 1fr" }}>
               {GOALS.map((g) => {
                 const selected = goals.includes(g.id);
                 return (
@@ -389,7 +397,7 @@ export default function Home() {
                       backgroundColor: selected ? g.bg : "#fff",
                       boxShadow: selected ? `0 0 0 2px ${g.color}` : "none",
                     }}
-                    onClick={() => toggleGoal(g.id)}
+                    onClick={() => selectGoal(g.id)}
                   >
                     <div style={s.goalIcon}>{g.icon}</div>
                     <div style={{ ...s.goalLabel, color: selected ? g.color : "#2d3748" }}>{g.label}</div>
