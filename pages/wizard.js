@@ -252,6 +252,12 @@ export default function Home() {
   const simDisposablePaymentRatio = disposableIncomeParsed > 0 ? (simTotalWithExtras / disposableIncomeParsed) * 100 : null;
   const minMonthly = loan > 0 ? Math.floor(calcTotalForYears(30) / 50) * 50 : 1000;
   const maxMonthly = loan > 0 ? Math.ceil(calcTotalForYears(5) / 50) * 50 : 50000;
+  // Cap the slider at 40% of income (Bank of Israel PTI rule) minus insurance
+  const cappedMaxMonthly = disposableIncomeParsed > 0
+    ? Math.min(maxMonthly, Math.max(minMonthly, Math.floor((disposableIncomeParsed - monthlyInsurance) / 50) * 50))
+    : maxMonthly;
+  const atPtiCap = disposableIncomeParsed > 0 && cappedMaxMonthly < maxMonthly;
+  const minYearsAllowed = atPtiCap && loan > 0 ? Math.max(5, solveYearsForMonthly(cappedMaxMonthly)) : 5;
 
   return (
     <div dir="rtl" style={s.page}>
@@ -684,13 +690,13 @@ export default function Home() {
                     <span style={{ fontWeight: "800", fontSize: "17px", color: "#2b6cb0" }}>{simYears} שנים</span>
                   </div>
                   <input
-                    type="range" min="5" max="30" step="1"
-                    value={simYears}
-                    onChange={(e) => setSimYears(parseInt(e.target.value))}
+                    type="range" min={minYearsAllowed} max="30" step="1"
+                    value={Math.max(minYearsAllowed, simYears)}
+                    onChange={(e) => setSimYears(Math.max(minYearsAllowed, parseInt(e.target.value)))}
                     style={s.slider}
                   />
                   <div style={s.sliderLabels}>
-                    <span>5 שנים</span><span>30 שנה</span>
+                    <span>{minYearsAllowed} שנים{atPtiCap ? " (מינ׳ לפי 40%)" : ""}</span><span>30 שנה</span>
                   </div>
                 </div>
                 <div>
@@ -700,15 +706,30 @@ export default function Home() {
                   </div>
                   <input
                     type="range"
-                    min={minMonthly} max={maxMonthly} step="50"
-                    value={Math.min(maxMonthly, Math.max(minMonthly, Math.round(simTotalMonthly / 50) * 50))}
-                    onChange={(e) => setSimYears(solveYearsForMonthly(parseInt(e.target.value)))}
+                    min={minMonthly} max={cappedMaxMonthly} step="50"
+                    value={Math.min(cappedMaxMonthly, Math.max(minMonthly, Math.round(simTotalMonthly / 50) * 50))}
+                    onChange={(e) => setSimYears(solveYearsForMonthly(Math.min(cappedMaxMonthly, parseInt(e.target.value))))}
                     style={s.slider}
                   />
                   <div style={s.sliderLabels}>
-                    <span>₪{fmt(minMonthly)} (30 שנה)</span><span>₪{fmt(maxMonthly)} (5 שנים)</span>
+                    <span>₪{fmt(minMonthly)} (30 שנה)</span>
+                    <span>₪{fmt(cappedMaxMonthly)}{atPtiCap ? " (מקס׳ לפי 40%)" : " (5 שנים)"}</span>
                   </div>
                 </div>
+                {atPtiCap && (
+                  <div style={{
+                    marginTop: "10px",
+                    padding: "8px 12px",
+                    backgroundColor: "#fffbeb",
+                    border: "1px solid #f6e05e",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    color: "#744210",
+                    lineHeight: "1.5",
+                  }}>
+                    ⚠️ <strong>תקרת ההחזר לפי בנק ישראל:</strong> מקסימום ₪{fmt(cappedMaxMonthly)} (משכנתא) + ₪{fmt(monthlyInsurance)} (ביטוח) = ₪{fmt(cappedMaxMonthly + monthlyInsurance)} — 40% מהכנסה של ₪{fmt(Math.round(totalIncome))}. הבנק לא יאשר החזר גבוה יותר.
+                  </div>
+                )}
               </div>
 
               <div style={s.totalBox}>
