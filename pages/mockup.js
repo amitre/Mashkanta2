@@ -6,9 +6,9 @@ export default function Mockup() {
   ];
 
   const tracks = [
-    { name: "קבועה לא צמודה", pct: 33, rate: "4.80%", amount: "₪495,000", monthly: "₪2,610", risk: "נמוך" },
-    { name: "פריים",           pct: 34, rate: "4.65%", amount: "₪510,000", monthly: "₪2,640", risk: "בינוני" },
-    { name: "משתנה לא צמודה", pct: 33, rate: "5.10%", amount: "₪495,000", monthly: "₪2,690", risk: "בינוני-גבוה" },
+    { name: "קבועה לא צמודה", desc: "ריבית קבועה, ללא הצמדה — הוודאות הגבוהה ביותר", pct: 33, rate: "4.80%", amount: "₪495,000", monthly: "₪2,610", risk: "נמוך" },
+    { name: "פריים",           desc: "ריבית משתנה צמודה לריבית בנק ישראל",            pct: 34, rate: "4.65%", amount: "₪510,000", monthly: "₪2,640", risk: "בינוני" },
+    { name: "משתנה לא צמודה", desc: "ריבית משתנה כל 5 שנים, ללא הצמדה",             pct: 33, rate: "5.10%", amount: "₪495,000", monthly: "₪2,690", risk: "בינוני-גבוה" },
   ];
 
   const TRACK_COLORS = {
@@ -143,16 +143,16 @@ export default function Mockup() {
                           {t.rate}
                         </span>
                       </div>
-                      <div style={{ fontSize: "11px", color: "#a0aec0", marginTop: "3px" }}>סיכון {t.risk}</div>
+                      <div style={{ fontSize: "12px", color: "#718096", marginTop: "3px" }}>{t.desc}</div>
                     </div>
-                    <div style={{ textAlign: "left" }}>
+                    <div style={{ textAlign: "left", flexShrink: 0, paddingRight: "12px" }}>
                       <div style={{ fontWeight: "800", fontSize: "16px", color: "#2b6cb0" }}>{t.pct}%</div>
                       <div style={{ fontSize: "11px", color: "#a0aec0" }}>{t.amount}</div>
                     </div>
                   </div>
                   <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px solid #f0f4f8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "12px", color: "#718096" }}>החזר חודשי</span>
-                    <span style={{ fontWeight: "800", fontSize: "15px", color: "#1a202c" }}>{t.monthly}</span>
+                    <span style={{ fontSize: "12px", color: "#718096" }}>החזר חודשי: <strong style={{ color: "#1a202c" }}>{t.monthly}</strong></span>
+                    <span style={{ fontSize: "11px", color: "#a0aec0" }}>סיכון {t.risk}</span>
                   </div>
                 </div>
               ))}
