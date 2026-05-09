@@ -49,6 +49,7 @@ export default function Home() {
   // Step 3
   const [income, setIncome] = useState("15000");
   const [borrowers, setBorrowers] = useState("1");
+  const [preferredMonthly, setPreferredMonthly] = useState("");
   const [years, setYears] = useState("25");
   const [simYears, setSimYears] = useState(25);
 
@@ -67,6 +68,7 @@ export default function Home() {
         if (d.goals?.length) setGoals(d.goals);
         if (d.income) setIncome(d.income);
         if (d.borrowers) setBorrowers(d.borrowers);
+        if (d.preferredMonthly) setPreferredMonthly(d.preferredMonthly);
         if (d.years) setYears(d.years);
         if (d.step && d.step < 4) setStep(d.step);
       }
@@ -77,15 +79,29 @@ export default function Home() {
   useEffect(() => {
     try {
       localStorage.setItem("wizard_state", JSON.stringify({
-        propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step,
+        propertyValue, equity, apartmentStatus, goals, income, borrowers, preferredMonthly, years, step,
       }));
     } catch {}
-  }, [propertyValue, equity, apartmentStatus, goals, income, borrowers, years, step]);
+  }, [propertyValue, equity, apartmentStatus, goals, income, borrowers, preferredMonthly, years, step]);
 
-  // Sync simulation years when entering results step
+  // Sync simulation years when entering results step — derive from preferredMonthly if available
+  // Clamp preferredMonthly when income/borrowers change
   useEffect(() => {
-    if (step === 4) setSimYears(parseInt(years) || 25);
-  }, [step]);
+    const cap = Math.floor((parseFloat(income || 0) * parseInt(borrowers || 1) * 0.4) / 50) * 50;
+    if (cap > 0 && parseFloat(preferredMonthly) > cap) {
+      setPreferredMonthly(String(cap));
+    }
+  }, [income, borrowers]);
+
+  useEffect(() => {
+    if (step === 4 && ratesInfo && preferredMonthly && parseFloat(preferredMonthly) > 0) {
+      const derived = solveYearsForMonthly(parseFloat(preferredMonthly));
+      setYears(String(derived));
+      setSimYears(derived);
+    } else if (step === 4) {
+      setSimYears(parseInt(years) || 25);
+    }
+  }, [step, ratesInfo]);
 
   const loanAmount =
     parseFloat(propertyValue) && parseFloat(equity)
@@ -102,7 +118,12 @@ export default function Home() {
 
   const step1Valid = propertyValue && equity && apartmentStatus && ltvOk;
   const step2Valid = goals.length > 0;
-  const step3Valid = income && years;
+
+  const totalIncomeNum = parseFloat(income || 0) * parseInt(borrowers || 1);
+  const maxAllowedMonthly = totalIncomeNum > 0 ? Math.floor((totalIncomeNum * 0.4) / 50) * 50 : 0;
+  const roughMin30 = loanAmount > 0 ? Math.max(500, Math.floor(calcMonthly(loanAmount, 0.055, 30) / 50) * 50) : 1000;
+  const preferredMonthlyNum = parseFloat(preferredMonthly) || 0;
+  const step3Valid = income && preferredMonthly && preferredMonthlyNum > 0;
 
   function toggleGoal(id) {
     setGoals((prev) =>
@@ -417,28 +438,61 @@ export default function Home() {
               </div>
             </div>
 
-            <div style={{ marginTop: "20px" }}>
-              <label style={s.label}>תקופת ההלוואה</label>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
-                {["15", "20", "25", "30"].map((y) => (
-                  <button
-                    key={y}
-                    style={{
-                      ...s.statusBtn,
-                      flex: "1",
-                      minWidth: "60px",
-                      borderColor: years === y ? "#3182ce" : "#e2e8f0",
-                      backgroundColor: years === y ? "#ebf8ff" : "#fff",
-                      color: years === y ? "#2b6cb0" : "#4a5568",
-                      fontWeight: years === y ? "700" : "400",
-                      fontSize: "14px",
-                    }}
-                    onClick={() => setYears(y)}
-                  >
-                    {y} שנה
-                  </button>
-                ))}
+            <div style={{ marginTop: "24px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label style={s.label}>החזר חודשי מועדף (₪)</label>
+                <span style={{ fontWeight: "800", fontSize: "18px", color: "#2b6cb0" }}>
+                  {preferredMonthlyNum > 0 ? `₪${fmt(preferredMonthlyNum)}` : "—"}
+                </span>
               </div>
+
+              {maxAllowedMonthly > 0 && roughMin30 <= maxAllowedMonthly ? (
+                <>
+                  <input
+                    type="range"
+                    min={roughMin30}
+                    max={maxAllowedMonthly}
+                    step="50"
+                    value={preferredMonthlyNum > 0 ? Math.min(maxAllowedMonthly, Math.max(roughMin30, preferredMonthlyNum)) : roughMin30}
+                    onChange={(e) => setPreferredMonthly(e.target.value)}
+                    style={{ ...s.slider, marginBottom: "4px" }}
+                  />
+                  <div style={s.sliderLabels}>
+                    <span>₪{fmt(roughMin30)} (30 שנה)</span>
+                    <span>₪{fmt(maxAllowedMonthly)} (מקס׳)</span>
+                  </div>
+
+                  <div style={{
+                    marginTop: "12px",
+                    padding: "10px 14px",
+                    backgroundColor: "#fffbeb",
+                    border: "1px solid #f6e05e",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    color: "#744210",
+                    lineHeight: "1.5",
+                  }}>
+                    <strong>⚠️ תקרת ההחזר החודשי: ₪{fmt(maxAllowedMonthly)}</strong><br />
+                    לפי הנחיות בנק ישראל, ההחזר החודשי לא יעלה על <strong>40% מהכנסת הלווים</strong> (₪{fmt(Math.round(totalIncomeNum * 0.4))} מתוך ₪{fmt(Math.round(totalIncomeNum))} הכנסה כוללת). סכום גבוה יותר לא יאושר על ידי הבנק.
+                  </div>
+                </>
+              ) : maxAllowedMonthly > 0 ? (
+                <div style={{
+                  marginTop: "12px",
+                  padding: "10px 14px",
+                  backgroundColor: "#fff5f5",
+                  border: "1px solid #fc8181",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  color: "#742a2a",
+                  lineHeight: "1.5",
+                }}>
+                  <strong>🚫 הכנסה נמוכה מדי יחסית להלוואה</strong><br />
+                  ה-40% המותרים (₪{fmt(maxAllowedMonthly)}) נמוך מהתשלום המינימלי ל-30 שנה (₪{fmt(roughMin30)}). כדי לקבל אישור, יש להגדיל את ההון העצמי, להגדיל את ההכנסה, או לבחור נכס זול יותר.
+                </div>
+              ) : (
+                <div style={{ color: "#718096", fontSize: "13px", marginTop: "8px" }}>יש להזין הכנסה חודשית תחילה</div>
+              )}
             </div>
 
             <div style={s.navRow}>
