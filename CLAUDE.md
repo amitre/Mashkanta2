@@ -4,6 +4,10 @@
 - **Repository:** `amitre/Mashkanta2`
 - **Branch ראשי:** `main`
 
+## סביבת עבודה
+- המשתמש עובד אך ורק בגרסת **Claude Code Web** — אין לו גישה לטרמינל עצמאי
+- אין לבקש מהמשתמש להריץ פקודות בעצמו — כל פעולות git מבוצעות על ידי Claude
+
 ## הגדרת GitHub בתחילת סשן
 הטוקן שמור ב-`.github-token` (gitignored). לדחיפה ל-main:
 
