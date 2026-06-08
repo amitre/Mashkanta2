@@ -1,11 +1,11 @@
 {
   "debugLines": [
     "API: https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v1/series/download?id=IR01&format=json&startPeriod=2025-01-01",
-    "HTTP 404",
+    "error: fetch failed",
     "API: https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v1/series/download?ids=IR01&format=json",
-    "HTTP 404",
+    "error: fetch failed",
     "API: https://edge.boi.gov.il/FusionEdge/services/BulkDownload/v2/series/download?id=IR01&format=json",
-    "HTTP 404",
+    "error: fetch failed",
     "Page: https://www.boi.org.il/he/monetarypolicy/monetarypolicydecisions/Pages/Default.aspx",
     "HTTP 200",
     "text length: 12557",
